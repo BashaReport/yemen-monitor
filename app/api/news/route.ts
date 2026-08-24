@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const RELIEFWEB_URL = "https://api.reliefweb.int/v1/reports";
+const RELIEFWEB_URL =
+  "https://api.reliefweb.int/v2/reports?appname=bashareport.com";
 
 export async function GET() {
   try {
@@ -10,19 +11,18 @@ export async function GET() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        appname: "basha-report",
-        profile: "list",
         preset: "latest",
         limit: 20,
         filter: {
-          field: "country.iso3",
-          value: "YEM",
+          field: "country",
+          value: "Yemen",
         },
         fields: {
           include: [
             "title",
             "date.created",
             "source.name",
+            "url",
             "url_alias",
           ],
         },
@@ -33,12 +33,12 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      const text = await response.text();
+      const errorText = await response.text();
 
       console.error(
         "ReliefWeb error",
         response.status,
-        text
+        errorText
       );
 
       throw new Error(
@@ -51,18 +51,15 @@ export async function GET() {
     const articles =
       data?.data?.map((item: any) => ({
         id: item.id,
-        title:
-          item.fields?.title ||
-          "Untitled report",
-        date:
-          item.fields?.date?.created ||
-          "",
+        title: item.fields?.title || "Untitled report",
+        date: item.fields?.date?.created || "",
         source:
-          item.fields?.source?.[0]?.name ||
-          "ReliefWeb",
+          item.fields?.source?.[0]?.name || "ReliefWeb",
         url:
           item.fields?.url_alias ||
-          `https://reliefweb.int/node/${item.id}`,
+          item.fields?.url ||
+          item.href ||
+          "",
         category: "Humanitarian",
       })) || [];
 
