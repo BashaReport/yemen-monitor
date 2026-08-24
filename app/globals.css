@@ -756,3 +756,144 @@ footer {
     white-space: nowrap;
   }
 }
+.liveFeedPage {
+  padding: 34px 38px 60px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 30px;
+}
+
+.liveFeedHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.liveFeedHeading p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.feedSearch {
+  width: 320px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--burgundy);
+}
+
+.feedSearch input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.liveFeedFilters {
+  margin-bottom: 16px;
+}
+
+.liveFeedResults {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.feedResultsHeader {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.liveFeedRow {
+  display: grid;
+  grid-template-columns: 130px 1fr 48px;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.liveFeedRow:last-child {
+  border-bottom: 0;
+}
+
+.liveFeedTime {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.liveFeedTitle {
+  color: var(--burgundy);
+  font-family: Georgia, serif;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.liveFeedTitle:hover {
+  color: var(--gold);
+}
+
+.relevanceBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ead8c1;
+  color: var(--burgundy);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.liveFeedEmpty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .liveFeedPage {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .liveFeedHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .feedSearch {
+    width: 100%;
+  }
+
+  .liveFeedRow {
+    grid-template-columns: 1fr 40px;
+  }
+
+  .liveFeedTime {
+    grid-column: 1 / -1;
+  }
+}
