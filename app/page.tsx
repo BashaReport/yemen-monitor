@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import {
   Activity,
@@ -14,73 +16,184 @@ import {
   Ship,
   TrendingUp,
 } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-const feed = [
-  {
-    time: "10:42",
-    type: "Maritime",
-    title: "Commercial vessel reports incident near Bab al-Mandab",
-    source: "Maritime source",
-    level: "high",
-  },
-  {
-    time: "09:18",
-    type: "Security",
-    title: "Reports of overnight air activity in western Yemen",
-    source: "Open sources",
-    level: "medium",
-  },
-  {
-    time: "08:51",
-    type: "Politics",
-    title: "New statement issued on regional negotiations",
-    source: "Official statement",
-    level: "low",
-  },
-  {
-    time: "07:30",
-    type: "Economy",
-    title: "Exchange-rate pressure continues in government-held areas",
-    source: "Local reporting",
-    level: "medium",
-  },
-];
+type Article = {
+  id: number;
+  title: string;
+  url: string;
+  date: string;
+  source: string;
+  category: string;
+  relevance: number;
+};
+
+type NewsResponse = {
+  updatedAt: string;
+  count: number;
+  articles: Article[];
+};
 
 const trends = [
   ["Red Sea Shipping", "+28%"],
-  ["Ceasefire Talks", "+17%"],
-  ["Economic Crisis", "+9%"],
-  ["Humanitarian Access", "+13%"],
+  ["Security", "+21%"],
+  ["Humanitarian", "+13%"],
+  ["Politics", "+9%"],
 ];
 
 export default function Home() {
+  const [articles, setArticles] = useState<Article[]>(
+    []
+  );
+
+  const [updatedAt, setUpdatedAt] =
+    useState<string>("");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState(false);
+
+  useEffect(() => {
+    async function loadNews() {
+      try {
+        const response = await fetch(
+          "/api/news",
+          {
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "News request failed"
+          );
+        }
+
+        const data: NewsResponse =
+          await response.json();
+
+        setArticles(data.articles || []);
+        setUpdatedAt(data.updatedAt || "");
+        setError(false);
+      } catch (err) {
+        console.error(err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadNews();
+
+    const interval =
+      window.setInterval(
+        loadNews,
+        300000
+      );
+
+    return () =>
+      window.clearInterval(interval);
+  }, []);
+
+  const maritimeCount = useMemo(
+    () =>
+      articles.filter(
+        (article) =>
+          article.category ===
+          "Maritime"
+      ).length,
+    [articles]
+  );
+
+  const securityCount = useMemo(
+    () =>
+      articles.filter(
+        (article) =>
+          article.category ===
+          "Security"
+      ).length,
+    [articles]
+  );
+
+  const humanitarianCount =
+    useMemo(
+      () =>
+        articles.filter(
+          (article) =>
+            article.category ===
+            "Humanitarian"
+        ).length,
+      [articles]
+    );
+
+  const latestArticles =
+    articles.slice(0, 6);
+
+  const topArticles = [...articles]
+    .sort(
+      (a, b) =>
+        b.relevance -
+        a.relevance
+    )
+    .slice(0, 4);
+
+  const formattedUpdate =
+    updatedAt
+      ? new Date(
+          updatedAt
+        ).toLocaleTimeString(
+          "en-US",
+          {
+            hour: "numeric",
+            minute: "2-digit",
+          }
+        )
+      : "Loading";
+
   return (
     <main>
       <header className="topbar">
         <div className="brandWrap">
           <Image
-  src="/brand/basha-report-logo.png"
-  alt="Basha Report"
-  width={110}
-  height={104}
-  className="brandLogo"
-  priority
-/>
+            src="/brand/basha-report-logo.png"
+            alt="Basha Report"
+            width={110}
+            height={104}
+            className="brandLogo"
+            priority
+          />
 
           <div className="brandDivider" />
 
           <div>
-            <div className="productName">Yemen Monitor</div>
-            <div className="productSub">Basha Report Intelligence</div>
+            <div className="productName">
+              Yemen Monitor
+            </div>
+
+            <div className="productSub">
+              Basha Report Intelligence
+            </div>
           </div>
         </div>
 
         <div className="topActions">
-          <button className="iconButton" aria-label="Search">
+          <button
+            className="iconButton"
+            aria-label="Search"
+          >
             <Search size={18} />
           </button>
 
-          <button className="iconButton" aria-label="Notifications">
+          <button
+            className="iconButton"
+            aria-label="Notifications"
+          >
             <Bell size={18} />
           </button>
 
@@ -92,7 +205,10 @@ export default function Home() {
       </header>
 
       <nav className="navRow">
-        <button className="menuButton">
+        <button
+          className="menuButton"
+          aria-label="Menu"
+        >
           <Menu size={18} />
         </button>
 
@@ -106,9 +222,13 @@ export default function Home() {
           "Economy",
           "Sources",
           "Briefings",
-        ].map((item, i) => (
+        ].map((item, index) => (
           <a
-            className={i === 0 ? "activeNav" : ""}
+            className={
+              index === 0
+                ? "activeNav"
+                : ""
+            }
             key={item}
             href="#"
           >
@@ -125,7 +245,7 @@ export default function Home() {
 
         <div className="statusItem">
           <Clock3 size={14} />
-          Updated 2 minutes ago
+          Updated {formattedUpdate}
         </div>
 
         <div className="statusItem">
@@ -135,19 +255,22 @@ export default function Home() {
 
         <div className="statusItem">
           <CircleDot size={14} />
-          126 sources active
+          {articles.length} live reports
         </div>
       </section>
 
       <section className="hero">
         <div>
-          <div className="eyebrow">SITUATION OVERVIEW</div>
+          <div className="eyebrow">
+            SITUATION OVERVIEW
+          </div>
 
           <h1>Yemen Monitor</h1>
 
           <p>
-            Independent monitoring and analysis of developments in Yemen and the
-            Red Sea.
+            Independent monitoring and
+            analysis of developments in
+            Yemen and the Red Sea.
           </p>
         </div>
 
@@ -157,37 +280,53 @@ export default function Home() {
             <ChevronDown size={15} />
           </button>
 
-          <button className="primaryButton">Open full briefing</button>
+          <button className="primaryButton">
+            Open full briefing
+          </button>
         </div>
       </section>
 
       <section className="metricsGrid">
         <Metric
-          icon={<ShieldAlert size={18} />}
-          label="Critical events"
-          value="7"
-          detail="2 new since midnight"
+          icon={
+            <ShieldAlert size={18} />
+          }
+          label="Security reports"
+          value={String(
+            securityCount
+          )}
+          detail="Last 24 hours"
         />
 
         <Metric
-          icon={<Activity size={18} />}
+          icon={
+            <Activity size={18} />
+          }
           label="News volume"
-          value="1,284"
-          detail="+18% vs yesterday"
+          value={String(
+            articles.length
+          )}
+          detail="Live monitored reports"
         />
 
         <Metric
           icon={<Ship size={18} />}
-          label="Maritime alerts"
-          value="11"
-          detail="Bab al-Mandab focus"
+          label="Maritime reports"
+          value={String(
+            maritimeCount
+          )}
+          detail="Red Sea and Gulf of Aden"
         />
 
         <Metric
-          icon={<MapPinned size={18} />}
-          label="Governorates active"
-          value="14"
-          detail="Reports in last 24h"
+          icon={
+            <MapPinned size={18} />
+          }
+          label="Humanitarian"
+          value={String(
+            humanitarianCount
+          )}
+          detail="Current reporting"
         />
       </section>
 
@@ -195,43 +334,98 @@ export default function Home() {
         <div className="card briefingCard">
           <div className="cardHeader">
             <div>
-              <div className="eyebrow">DAILY BRIEF</div>
-              <h2>What changed in the last 24 hours</h2>
+              <div className="eyebrow">
+                TOP DEVELOPMENTS
+              </div>
+
+              <h2>
+                High relevance reporting
+              </h2>
             </div>
 
-            <span className="goldPill">Updated 10:45</span>
+            <span className="goldPill">
+              Live
+            </span>
           </div>
 
-          <p className="briefText">
-            Maritime reporting remains elevated around the southern Red Sea.
-            Political messaging is focused on negotiations and regional
-            security. Economic pressure continues across major population
-            centers, while humanitarian agencies report access concerns in
-            several areas.
-          </p>
+          {loading && (
+            <p className="briefText">
+              Loading current Yemen
+              reporting...
+            </p>
+          )}
 
-          <div className="briefLinks">
-            <span>4 key developments</span>
-            <span>18 supporting sources</span>
-            <span>Confidence 82%</span>
-          </div>
+          {error && (
+            <p className="briefText">
+              Live reporting is
+              temporarily unavailable.
+            </p>
+          )}
+
+          {!loading &&
+            !error &&
+            topArticles.map(
+              (article) => (
+                <div
+                  key={article.id}
+                  style={{
+                    marginBottom:
+                      "18px",
+                  }}
+                >
+                  <div className="feedMeta">
+                    {article.category}
+                    {" · "}
+                    {article.source}
+                    {" · "}
+                    Relevance{" "}
+                    {article.relevance}
+                  </div>
+
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="feedTitle"
+                  >
+                    {article.title}
+                  </a>
+                </div>
+              )
+            )}
         </div>
 
         <div className="card mapCard">
           <div className="cardHeader">
             <div>
-              <div className="eyebrow">LIVE MAP</div>
-              <h2>Yemen activity</h2>
+              <div className="eyebrow">
+                LIVE MAP
+              </div>
+
+              <h2>
+                Yemen activity
+              </h2>
             </div>
 
             <Anchor size={18} />
           </div>
 
           <div className="mapMock">
-            <div className="mapLabel sanaa">Sana&apos;a</div>
-            <div className="mapLabel hodeidah">Hudaydah</div>
-            <div className="mapLabel aden">Aden</div>
-            <div className="mapLabel marib">Marib</div>
+            <div className="mapLabel sanaa">
+              Sana&apos;a
+            </div>
+
+            <div className="mapLabel hodeidah">
+              Hudaydah
+            </div>
+
+            <div className="mapLabel aden">
+              Aden
+            </div>
+
+            <div className="mapLabel marib">
+              Marib
+            </div>
 
             <span className="marker m1" />
             <span className="marker m2" />
@@ -239,70 +433,142 @@ export default function Home() {
             <span className="marker m4" />
             <span className="marker m5" />
 
-            <div className="watermark">YEMEN</div>
+            <div className="watermark">
+              YEMEN
+            </div>
           </div>
         </div>
 
         <div className="card feedCard">
           <div className="cardHeader">
             <div>
-              <div className="eyebrow">LATEST DEVELOPMENTS</div>
-              <h2>Intelligence feed</h2>
+              <div className="eyebrow">
+                LATEST DEVELOPMENTS
+              </div>
+
+              <h2>
+                Live intelligence feed
+              </h2>
             </div>
           </div>
 
           <div className="feedList">
-            {feed.map((item) => (
-              <article className="feedItem" key={item.time + item.title}>
-                <div className="timeCol">{item.time}</div>
+            {loading && (
+              <div className="feedItem">
+                Loading live reports...
+              </div>
+            )}
 
-                <div className={`severity ${item.level}`} />
+            {error && (
+              <div className="feedItem">
+                Unable to load live
+                reporting.
+              </div>
+            )}
 
-                <div>
-                  <div className="feedMeta">
-                    {item.type} · {item.source}
-                  </div>
+            {!loading &&
+              !error &&
+              latestArticles.map(
+                (article) => (
+                  <article
+                    className="feedItem"
+                    key={article.id}
+                  >
+                    <div className="timeCol">
+                      {formatArticleTime(
+                        article.date
+                      )}
+                    </div>
 
-                  <div className="feedTitle">{item.title}</div>
-                </div>
-              </article>
-            ))}
+                    <div
+                      className={`severity ${getSeverity(
+                        article
+                      )}`}
+                    />
+
+                    <div>
+                      <div className="feedMeta">
+                        {
+                          article.category
+                        }
+                        {" · "}
+                        {article.source}
+                      </div>
+
+                      <a
+                        href={
+                          article.url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="feedTitle"
+                      >
+                        {article.title}
+                      </a>
+                    </div>
+                  </article>
+                )
+              )}
           </div>
         </div>
 
         <div className="card trendsCard">
           <div className="cardHeader">
             <div>
-              <div className="eyebrow">MEDIA INTELLIGENCE</div>
-              <h2>Trending narratives</h2>
+              <div className="eyebrow">
+                MEDIA INTELLIGENCE
+              </div>
+
+              <h2>
+                Trending narratives
+              </h2>
             </div>
 
             <TrendingUp size={18} />
           </div>
 
           <div className="trendsList">
-            {trends.map(([name, delta], i) => (
-              <div className="trendRow" key={name}>
-                <span>{name}</span>
+            {trends.map(
+              (
+                [name, delta],
+                index
+              ) => (
+                <div
+                  className="trendRow"
+                  key={name}
+                >
+                  <span>{name}</span>
 
-                <div className="spark">
-                  <span
-                    style={{
-                      width: `${62 + i * 7}%`,
-                    }}
-                  />
+                  <div className="spark">
+                    <span
+                      style={{
+                        width: `${
+                          62 +
+                          index * 7
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                  <strong>
+                    {delta}
+                  </strong>
                 </div>
-
-                <strong>{delta}</strong>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       </section>
 
       <footer>
-        <div>Basha Report · Yemen Monitor</div>
-        <div>Independent monitoring and analysis</div>
+        <div>
+          Basha Report · Yemen Monitor
+        </div>
+
+        <div>
+          Independent monitoring and
+          analysis
+        </div>
       </footer>
     </main>
   );
@@ -321,13 +587,67 @@ function Metric({
 }) {
   return (
     <div className="metricCard">
-      <div className="metricIcon">{icon}</div>
+      <div className="metricIcon">
+        {icon}
+      </div>
 
       <div>
-        <div className="metricLabel">{label}</div>
-        <div className="metricValue">{value}</div>
-        <div className="metricDetail">{detail}</div>
+        <div className="metricLabel">
+          {label}
+        </div>
+
+        <div className="metricValue">
+          {value}
+        </div>
+
+        <div className="metricDetail">
+          {detail}
+        </div>
       </div>
     </div>
   );
+}
+
+function formatArticleTime(
+  date: string
+) {
+  if (!date) {
+    return "";
+  }
+
+  const parsed = new Date(date);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  );
+}
+
+function getSeverity(
+  article: Article
+) {
+  if (
+    article.relevance >= 10
+  ) {
+    return "high";
+  }
+
+  if (
+    article.relevance >= 6
+  ) {
+    return "medium";
+  }
+
+  return "low";
 }
