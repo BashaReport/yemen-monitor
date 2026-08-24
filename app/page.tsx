@@ -47,6 +47,25 @@ const categories = [
   "General",
 ];
 
+const timeOptions = [
+  {
+    label: "1 hour",
+    hours: 1,
+  },
+  {
+    label: "6 hours",
+    hours: 6,
+  },
+  {
+    label: "12 hours",
+    hours: 12,
+  },
+  {
+    label: "24 hours",
+    hours: 24,
+  },
+];
+
 const navItems = [
   {
     name: "Overview",
@@ -92,6 +111,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedHours, setSelectedHours] = useState(24);
 
   useEffect(() => {
     async function loadNews() {
@@ -127,42 +147,65 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, []);
 
+  const timeFilteredArticles = useMemo(() => {
+    const cutoff =
+      Date.now() -
+      selectedHours *
+        60 *
+        60 *
+        1000;
+
+    return articles.filter((article) => {
+      const articleTime =
+        new Date(article.date).getTime();
+
+      if (Number.isNaN(articleTime)) {
+        return false;
+      }
+
+      return articleTime >= cutoff;
+    });
+  }, [articles, selectedHours]);
+
   const filteredArticles = useMemo(() => {
     if (activeCategory === "All") {
-      return articles;
+      return timeFilteredArticles;
     }
 
-    return articles.filter(
+    return timeFilteredArticles.filter(
       (article) =>
         article.category === activeCategory
     );
-  }, [articles, activeCategory]);
+  }, [
+    timeFilteredArticles,
+    activeCategory,
+  ]);
 
   const maritimeCount = useMemo(
     () =>
-      articles.filter(
+      timeFilteredArticles.filter(
         (article) =>
           article.category === "Maritime"
       ).length,
-    [articles]
+    [timeFilteredArticles]
   );
 
   const securityCount = useMemo(
     () =>
-      articles.filter(
+      timeFilteredArticles.filter(
         (article) =>
           article.category === "Security"
       ).length,
-    [articles]
+    [timeFilteredArticles]
   );
 
   const humanitarianCount = useMemo(
     () =>
-      articles.filter(
+      timeFilteredArticles.filter(
         (article) =>
           article.category === "Humanitarian"
       ).length,
-    [articles]
+    [timeFilteredArticles]
   );
 
   const latestArticles =
@@ -267,7 +310,7 @@ export default function Home() {
 
         <div className="statusItem">
           <CircleDot size={14} />
-          {articles.length} live reports
+          {timeFilteredArticles.length} live reports
         </div>
       </section>
 
@@ -286,10 +329,31 @@ export default function Home() {
         </div>
 
         <div className="heroControls">
-          <button className="filterButton">
-            Last 24 hours
-            <ChevronDown size={15} />
-          </button>
+          <label className="homepageTimeFilter">
+            <span>Time window</span>
+
+            <div className="selectBox">
+              <select
+                value={selectedHours}
+                onChange={(event) =>
+                  setSelectedHours(
+                    Number(event.target.value)
+                  )
+                }
+              >
+                {timeOptions.map((option) => (
+                  <option
+                    key={option.hours}
+                    value={option.hours}
+                  >
+                    Last {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <ChevronDown size={14} />
+            </div>
+          </label>
         </div>
       </section>
 
@@ -298,14 +362,16 @@ export default function Home() {
           icon={<ShieldAlert size={18} />}
           label="Security reports"
           value={String(securityCount)}
-          detail="Last 24 hours"
+          detail={`Last ${selectedHours} hours`}
         />
 
         <Metric
           icon={<Activity size={18} />}
           label="News volume"
-          value={String(articles.length)}
-          detail="Live monitored reports"
+          value={String(
+            timeFilteredArticles.length
+          )}
+          detail={`Last ${selectedHours} hours`}
         />
 
         <Metric
@@ -319,7 +385,7 @@ export default function Home() {
           icon={<MapPinned size={18} />}
           label="Humanitarian"
           value={String(humanitarianCount)}
-          detail="Current reporting"
+          detail={`Last ${selectedHours} hours`}
         />
       </section>
 
@@ -332,8 +398,8 @@ export default function Home() {
           {categories.map((category) => {
             const count =
               category === "All"
-                ? articles.length
-                : articles.filter(
+                ? timeFilteredArticles.length
+                : timeFilteredArticles.filter(
                     (article) =>
                       article.category === category
                   ).length;
@@ -368,8 +434,8 @@ export default function Home() {
 
               <h2>
                 {activeCategory === "All"
-                  ? "Live Yemen intelligence feed"
-                  : `${activeCategory} reporting`}
+                  ? `Live Yemen intelligence feed · ${selectedHours}h`
+                  : `${activeCategory} reporting · ${selectedHours}h`}
               </h2>
             </div>
 
@@ -398,7 +464,8 @@ export default function Home() {
               !error &&
               latestArticles.length === 0 && (
                 <div className="feedItem">
-                  No reports in this category right now.
+                  No reports in this category during
+                  the selected time window.
                 </div>
               )}
 
