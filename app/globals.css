@@ -1,0 +1,687 @@
+:root {
+  --ivory: #efe5d7;
+  --ivory-soft: #f7f1e8;
+  --burgundy: #320303;
+  --brown: #4b201c;
+  --gold: #a86604;
+  --gold-soft: #d7b16c;
+  --ink: #241716;
+  --muted: #75655e;
+  --line: rgba(50, 3, 3, 0.14);
+  --danger: #8a2b25;
+  --surface: rgba(255, 255, 255, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ivory-soft);
+  color: var(--ink);
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+main {
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background:
+    linear-gradient(
+      180deg,
+      #f8f2e9 0%,
+      #efe3d3 100%
+    );
+}
+
+.topbar {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 38px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brandWrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logoMark {
+  width: 74px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  color: var(--burgundy);
+  background: #f3e8d8;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.brandDivider {
+  width: 1px;
+  height: 42px;
+  background: var(--line);
+}
+
+.productName {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  color: var(--burgundy);
+}
+
+.productSub {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconButton,
+.langButton,
+.menuButton,
+.filterButton,
+.primaryButton {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.38);
+  border-radius: 10px;
+  color: var(--burgundy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconButton {
+  width: 40px;
+  height: 40px;
+}
+
+.langButton {
+  height: 40px;
+  padding: 0 13px;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.navRow {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 0 38px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.navRow a {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  color: #5d4a45;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.navRow a.activeNav {
+  color: var(--burgundy);
+  border-bottom-color: var(--gold);
+  font-weight: 700;
+}
+
+.menuButton {
+  min-width: 36px;
+  height: 36px;
+}
+
+.statusStrip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 38px;
+  overflow-x: auto;
+  background: var(--burgundy);
+  color: #f7eee4;
+  font-size: 11px;
+}
+
+.live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f4cc7d;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d79a28;
+  box-shadow:
+    0 0 0 4px rgba(215, 154, 40, 0.15);
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.82;
+  white-space: nowrap;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 42px 38px 25px;
+}
+
+.eyebrow {
+  margin-bottom: 7px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.7px;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 8px;
+  color: var(--burgundy);
+  font-family: Georgia, serif;
+  font-size: 46px;
+  font-weight: 500;
+}
+
+h2 {
+  margin-bottom: 0;
+  color: var(--burgundy);
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.hero p {
+  max-width: 670px;
+  margin-bottom: 0;
+  color: #6c5a54;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.heroControls {
+  display: flex;
+  gap: 10px;
+}
+
+.filterButton,
+.primaryButton {
+  min-height: 42px;
+  padding: 0 15px;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.primaryButton {
+  background: var(--burgundy);
+  color: #f8ead6;
+  border-color: var(--burgundy);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 0 38px 14px;
+}
+
+.metricCard,
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 12px 40px rgba(70, 30, 20, 0.04);
+}
+
+.metricCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.metricIcon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #ead8c1;
+  color: var(--burgundy);
+}
+
+.metricLabel {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  margin: 2px 0;
+  color: var(--burgundy);
+  font-family: Georgia, serif;
+  font-size: 30px;
+}
+
+.metricDetail {
+  color: #806e67;
+  font-size: 11px;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 14px;
+  padding: 0 38px 38px;
+}
+
+.card {
+  min-width: 0;
+  padding: 22px;
+  border-radius: 16px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.goldPill {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #ead7b0;
+  color: #6f4200;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.briefingCard {
+  min-height: 230px;
+}
+
+.briefText {
+  max-width: 920px;
+  color: #49322e;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.briefLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 24px;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mapCard {
+  grid-row: span 2;
+}
+
+.mapMock {
+  position: relative;
+  height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(50, 3, 3, 0.10);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 58% 45%,
+      rgba(168, 102, 4, 0.10),
+      transparent 24%
+    ),
+    linear-gradient(
+      135deg,
+      #e1cfb7,
+      #f2e8dc
+    );
+}
+
+.mapMock::before {
+  content: "";
+  position: absolute;
+  width: 62%;
+  height: 48%;
+  top: 25%;
+  left: 20%;
+  background: #d3b995;
+  clip-path:
+    polygon(
+      8% 42%,
+      18% 20%,
+      40% 10%,
+      62% 0,
+      81% 13%,
+      94% 28%,
+      91% 48%,
+      75% 63%,
+      57% 67%,
+      43% 86%,
+      27% 100%,
+      17% 78%,
+      0 69%
+    );
+  opacity: 0.85;
+}
+
+.watermark {
+  position: absolute;
+  right: 25px;
+  bottom: 20px;
+  color: rgba(50, 3, 3, 0.07);
+  font-family: Georgia, serif;
+  font-size: 42px;
+  letter-spacing: 8px;
+}
+
+.mapLabel {
+  position: absolute;
+  z-index: 3;
+  color: var(--burgundy);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sanaa {
+  left: 57%;
+  top: 46%;
+}
+
+.hodeidah {
+  left: 35%;
+  top: 49%;
+}
+
+.aden {
+  left: 54%;
+  top: 70%;
+}
+
+.marib {
+  left: 66%;
+  top: 44%;
+}
+
+.marker {
+  position: absolute;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #f8f1e8;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow:
+    0 0 0 4px rgba(168, 102, 4, 0.18);
+}
+
+.m1 {
+  left: 55%;
+  top: 44%;
+}
+
+.m2 {
+  left: 34%;
+  top: 48%;
+  background: var(--danger);
+}
+
+.m3 {
+  left: 53%;
+  top: 68%;
+}
+
+.m4 {
+  left: 66%;
+  top: 43%;
+  background: var(--danger);
+}
+
+.m5 {
+  left: 72%;
+  top: 64%;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+}
+
+.feedItem {
+  display: grid;
+  grid-template-columns: 46px 8px 1fr;
+  gap: 12px;
+  padding: 15px 0;
+  border-top: 1px solid rgba(50, 3, 3, 0.09);
+}
+
+.feedItem:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.timeCol {
+  color: #7b6a64;
+  font-size: 11px;
+}
+
+.severity {
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #8b756c;
+}
+
+.severity.high {
+  background: var(--danger);
+}
+
+.severity.medium {
+  background: var(--gold);
+}
+
+.feedMeta {
+  margin-bottom: 5px;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.feedTitle {
+  color: #3c2522;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.trendsList {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.trendRow {
+  display: grid;
+  grid-template-columns: 140px 1fr 52px;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.trendRow strong {
+  color: var(--gold);
+  text-align: right;
+  font-size: 11px;
+}
+
+.spark {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e8d9c8;
+}
+
+.spark span {
+  display: block;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--burgundy);
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 38px 34px;
+  border-top: 1px solid var(--line);
+  color: #85736b;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapCard {
+    grid-row: auto;
+  }
+
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .productSub {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .topbar,
+  .navRow,
+  .hero,
+  .metricsGrid,
+  .dashboardGrid,
+  footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .topbar {
+    min-height: 82px;
+  }
+
+  .brandDivider {
+    display: none;
+  }
+
+  .productName {
+    font-size: 19px;
+  }
+
+  .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroControls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    font-size: 38px;
+  }
+
+  .statusStrip {
+    padding-left: 18px;
+  }
+
+  .mapMock {
+    height: 330px;
+  }
+
+  .trendRow {
+    grid-template-columns: 120px 1fr 44px;
+  }
+
+  .topActions .iconButton:first-child {
+    display: none;
+  }
+}
