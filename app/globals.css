@@ -265,20 +265,6 @@ h2 {
   text-transform: uppercase;
 }
 
-.filterButton,
-.primaryButton {
-  min-height: 42px;
-  padding: 0 15px;
-  gap: 7px;
-  font-size: 12px;
-}
-
-.primaryButton {
-  background: var(--burgundy);
-  color: #f8ead6;
-  border-color: var(--burgundy);
-}
-
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -360,28 +346,6 @@ h2 {
   color: #6f4200;
   font-size: 10px;
   font-weight: 800;
-}
-
-.briefingCard {
-  min-height: 230px;
-}
-
-.briefText {
-  max-width: 920px;
-  color: #49322e;
-  font-family: Georgia, serif;
-  font-size: 18px;
-  line-height: 1.65;
-}
-
-.briefLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  margin-top: 24px;
-  color: var(--gold);
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .mapCard {
@@ -571,40 +535,6 @@ h2 {
   color: var(--gold);
 }
 
-.trendsList {
-  display: flex;
-  flex-direction: column;
-  gap: 17px;
-}
-
-.trendRow {
-  display: grid;
-  grid-template-columns: 140px 1fr 52px;
-  gap: 12px;
-  align-items: center;
-  font-size: 12px;
-}
-
-.trendRow strong {
-  color: var(--gold);
-  text-align: right;
-  font-size: 11px;
-}
-
-.spark {
-  height: 5px;
-  overflow: hidden;
-  border-radius: 10px;
-  background: #e8d9c8;
-}
-
-.spark span {
-  display: block;
-  height: 100%;
-  border-radius: 10px;
-  background: var(--burgundy);
-}
-
 .filterCard {
   margin: 0 38px 14px;
 }
@@ -647,7 +577,8 @@ h2 {
   min-height: 620px;
 }
 
-.liveFeedPage {
+.liveFeedPage,
+.sourcesPage {
   padding: 34px 38px 60px;
 }
 
@@ -661,7 +592,8 @@ h2 {
   margin-bottom: 30px;
 }
 
-.liveFeedHeading {
+.liveFeedHeading,
+.sourcesHeading {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -669,7 +601,8 @@ h2 {
   margin-bottom: 26px;
 }
 
-.liveFeedHeading p {
+.liveFeedHeading p,
+.sourcesHeading p {
   color: var(--muted);
   margin-bottom: 0;
 }
@@ -754,10 +687,6 @@ h2 {
   color: var(--gold);
 }
 
-.liveFeedFilters {
-  margin-bottom: 16px;
-}
-
 .liveFeedResults {
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -824,6 +753,98 @@ h2 {
   color: var(--muted);
 }
 
+.sourceFilters {
+  margin-bottom: 18px;
+}
+
+.sourcesGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sourceCard {
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.sourceCard:hover {
+  transform: translateY(-2px);
+  border-color:
+    rgba(168, 102, 4, 0.45);
+}
+
+.sourceCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sourceIcon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #ead8c1;
+  color: var(--burgundy);
+}
+
+.sourceCard h2 {
+  margin-bottom: 14px;
+}
+
+.sourceDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.sourceDetails span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(50, 3, 3, 0.05);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.sourceStatus {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.activeSource {
+  background:
+    rgba(63, 109, 54, 0.12);
+  color: #3f6d36;
+}
+
+.pendingSource {
+  background:
+    rgba(168, 102, 4, 0.12);
+  color: var(--gold);
+}
+
+.plannedSource {
+  background:
+    rgba(50, 3, 3, 0.08);
+  color: var(--burgundy);
+}
+
 footer {
   display: flex;
   justify-content: space-between;
@@ -838,7 +859,8 @@ footer {
 
 @media (max-width: 980px) {
   .metricsGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns:
+      repeat(2, 1fr);
   }
 
   .dashboardGrid {
@@ -857,15 +879,22 @@ footer {
   .productSub {
     display: none;
   }
+
+  .sourcesGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
-  .liveFeedPage {
+  .liveFeedPage,
+  .sourcesPage {
     padding-left: 18px;
     padding-right: 18px;
   }
 
-  .liveFeedHeading {
+  .liveFeedHeading,
+  .sourcesHeading {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -939,14 +968,6 @@ footer {
     height: 330px;
   }
 
-  .trendRow {
-    grid-template-columns: 120px 1fr 44px;
-  }
-
-  .topActions .iconButton:first-child {
-    display: none;
-  }
-
   .filterCard {
     margin-left: 18px;
     margin-right: 18px;
@@ -964,11 +985,16 @@ footer {
 
   .secondaryFilters {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns:
+      1fr 1fr;
   }
 
   .selectBox {
     min-width: 0;
     width: 100%;
+  }
+
+  .sourcesGrid {
+    grid-template-columns: 1fr;
   }
 }
