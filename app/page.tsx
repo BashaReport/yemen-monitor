@@ -3,7 +3,6 @@
 import Image from "next/image";
 import {
   Activity,
-  Anchor,
   Bell,
   ChevronDown,
   CircleDot,
@@ -14,7 +13,6 @@ import {
   Search,
   ShieldAlert,
   Ship,
-  TrendingUp,
 } from "lucide-react";
 import {
   useEffect,
@@ -38,45 +36,35 @@ type NewsResponse = {
   articles: Article[];
 };
 
-const trends = [
-  ["Red Sea Shipping", "+28%"],
-  ["Security", "+21%"],
-  ["Humanitarian", "+13%"],
-  ["Politics", "+9%"],
+const categories = [
+  "All",
+  "Security",
+  "Maritime",
+  "Politics",
+  "Humanitarian",
+  "Economy",
+  "General",
 ];
 
 export default function Home() {
-  const [articles, setArticles] = useState<Article[]>(
-    []
-  );
-
-  const [updatedAt, setUpdatedAt] =
-    useState<string>("");
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState(false);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [updatedAt, setUpdatedAt] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => {
     async function loadNews() {
       try {
-        const response = await fetch(
-          "/api/news",
-          {
-            cache: "no-store",
-          }
-        );
+        const response = await fetch("/api/news", {
+          cache: "no-store",
+        });
 
         if (!response.ok) {
-          throw new Error(
-            "News request failed"
-          );
+          throw new Error("News request failed");
         }
 
-        const data: NewsResponse =
-          await response.json();
+        const data: NewsResponse = await response.json();
 
         setArticles(data.articles || []);
         setUpdatedAt(data.updatedAt || "");
@@ -91,22 +79,28 @@ export default function Home() {
 
     loadNews();
 
-    const interval =
-      window.setInterval(
-        loadNews,
-        300000
-      );
+    const interval = window.setInterval(
+      loadNews,
+      300000
+    );
 
-    return () =>
-      window.clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, []);
+
+  const filteredArticles = useMemo(() => {
+    if (activeCategory === "All") {
+      return articles;
+    }
+
+    return articles.filter(
+      (article) => article.category === activeCategory
+    );
+  }, [articles, activeCategory]);
 
   const maritimeCount = useMemo(
     () =>
       articles.filter(
-        (article) =>
-          article.category ===
-          "Maritime"
+        (article) => article.category === "Maritime"
       ).length,
     [articles]
   );
@@ -114,47 +108,30 @@ export default function Home() {
   const securityCount = useMemo(
     () =>
       articles.filter(
-        (article) =>
-          article.category ===
-          "Security"
+        (article) => article.category === "Security"
       ).length,
     [articles]
   );
 
-  const humanitarianCount =
-    useMemo(
-      () =>
-        articles.filter(
-          (article) =>
-            article.category ===
-            "Humanitarian"
-        ).length,
-      [articles]
-    );
+  const humanitarianCount = useMemo(
+    () =>
+      articles.filter(
+        (article) => article.category === "Humanitarian"
+      ).length,
+    [articles]
+  );
 
-  const latestArticles =
-    articles.slice(0, 6);
+  const latestArticles = filteredArticles.slice(0, 12);
 
-  const topArticles = [...articles]
-    .sort(
-      (a, b) =>
-        b.relevance -
-        a.relevance
-    )
-    .slice(0, 4);
-
-  const formattedUpdate =
-    updatedAt
-      ? new Date(
-          updatedAt
-        ).toLocaleTimeString(
-          "en-US",
-          {
-            hour: "numeric",
-            minute: "2-digit",
-          }
-        )
-      : "Loading";
+  const formattedUpdate = updatedAt
+    ? new Date(updatedAt).toLocaleTimeString(
+        "en-US",
+        {
+          hour: "numeric",
+          minute: "2-digit",
+        }
+      )
+    : "Loading";
 
   return (
     <main>
@@ -268,9 +245,8 @@ export default function Home() {
           <h1>Yemen Monitor</h1>
 
           <p>
-            Independent monitoring and
-            analysis of developments in
-            Yemen and the Red Sea.
+            Independent monitoring and analysis of
+            developments in Yemen and the Red Sea.
           </p>
         </div>
 
@@ -279,120 +255,156 @@ export default function Home() {
             Last 24 hours
             <ChevronDown size={15} />
           </button>
-
-          <button className="primaryButton">
-            Open full briefing
-          </button>
         </div>
       </section>
 
       <section className="metricsGrid">
         <Metric
-          icon={
-            <ShieldAlert size={18} />
-          }
+          icon={<ShieldAlert size={18} />}
           label="Security reports"
-          value={String(
-            securityCount
-          )}
+          value={String(securityCount)}
           detail="Last 24 hours"
         />
 
         <Metric
-          icon={
-            <Activity size={18} />
-          }
+          icon={<Activity size={18} />}
           label="News volume"
-          value={String(
-            articles.length
-          )}
+          value={String(articles.length)}
           detail="Live monitored reports"
         />
 
         <Metric
           icon={<Ship size={18} />}
           label="Maritime reports"
-          value={String(
-            maritimeCount
-          )}
+          value={String(maritimeCount)}
           detail="Red Sea and Gulf of Aden"
         />
 
         <Metric
-          icon={
-            <MapPinned size={18} />
-          }
+          icon={<MapPinned size={18} />}
           label="Humanitarian"
-          value={String(
-            humanitarianCount
-          )}
+          value={String(humanitarianCount)}
           detail="Current reporting"
         />
       </section>
 
+      <section className="card filterCard">
+        <div className="eyebrow">
+          FILTER LIVE FEED
+        </div>
+
+        <div className="categoryFilters">
+          {categories.map((category) => {
+            const count =
+              category === "All"
+                ? articles.length
+                : articles.filter(
+                    (article) =>
+                      article.category === category
+                  ).length;
+
+            return (
+              <button
+                key={category}
+                className={
+                  activeCategory === category
+                    ? "categoryButton activeCategoryButton"
+                    : "categoryButton"
+                }
+                onClick={() =>
+                  setActiveCategory(category)
+                }
+              >
+                {category}
+                <span>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="dashboardGrid">
-        <div className="card briefingCard">
+        <div className="card feedCard fullFeedCard">
           <div className="cardHeader">
             <div>
               <div className="eyebrow">
-                TOP DEVELOPMENTS
+                LATEST DEVELOPMENTS
               </div>
 
               <h2>
-                High relevance reporting
+                {activeCategory === "All"
+                  ? "Live Yemen intelligence feed"
+                  : `${activeCategory} reporting`}
               </h2>
             </div>
 
             <span className="goldPill">
-              Live
+              {filteredArticles.length} reports
             </span>
           </div>
 
-          {loading && (
-            <p className="briefText">
-              Loading current Yemen
-              reporting...
-            </p>
-          )}
+          <div className="feedList">
+            {loading && (
+              <div className="feedItem">
+                Loading live reports...
+              </div>
+            )}
 
-          {error && (
-            <p className="briefText">
-              Live reporting is
-              temporarily unavailable.
-            </p>
-          )}
+            {error && (
+              <div className="feedItem">
+                Unable to load live reporting.
+              </div>
+            )}
 
-          {!loading &&
-            !error &&
-            topArticles.map(
-              (article) => (
-                <div
+            {!loading &&
+              !error &&
+              latestArticles.length === 0 && (
+                <div className="feedItem">
+                  No reports in this category right now.
+                </div>
+              )}
+
+            {!loading &&
+              !error &&
+              latestArticles.map((article) => (
+                <article
+                  className="feedItem"
                   key={article.id}
-                  style={{
-                    marginBottom:
-                      "18px",
-                  }}
                 >
-                  <div className="feedMeta">
-                    {article.category}
-                    {" · "}
-                    {article.source}
-                    {" · "}
-                    Relevance{" "}
-                    {article.relevance}
+                  <div className="timeCol">
+                    {formatArticleTime(
+                      article.date
+                    )}
                   </div>
 
-                  <a
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="feedTitle"
-                  >
-                    {article.title}
-                  </a>
-                </div>
-              )
-            )}
+                  <div
+                    className={`severity ${getSeverity(
+                      article
+                    )}`}
+                  />
+
+                  <div>
+                    <div className="feedMeta">
+                      {article.category}
+                      {" · "}
+                      {article.source}
+                      {" · "}
+                      Relevance{" "}
+                      {article.relevance}
+                    </div>
+
+                    <a
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="feedTitle"
+                    >
+                      {article.title}
+                    </a>
+                  </div>
+                </article>
+              ))}
+          </div>
         </div>
 
         <div className="card mapCard">
@@ -406,8 +418,6 @@ export default function Home() {
                 Yemen activity
               </h2>
             </div>
-
-            <Anchor size={18} />
           </div>
 
           <div className="mapMock">
@@ -438,126 +448,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        <div className="card feedCard">
-          <div className="cardHeader">
-            <div>
-              <div className="eyebrow">
-                LATEST DEVELOPMENTS
-              </div>
-
-              <h2>
-                Live intelligence feed
-              </h2>
-            </div>
-          </div>
-
-          <div className="feedList">
-            {loading && (
-              <div className="feedItem">
-                Loading live reports...
-              </div>
-            )}
-
-            {error && (
-              <div className="feedItem">
-                Unable to load live
-                reporting.
-              </div>
-            )}
-
-            {!loading &&
-              !error &&
-              latestArticles.map(
-                (article) => (
-                  <article
-                    className="feedItem"
-                    key={article.id}
-                  >
-                    <div className="timeCol">
-                      {formatArticleTime(
-                        article.date
-                      )}
-                    </div>
-
-                    <div
-                      className={`severity ${getSeverity(
-                        article
-                      )}`}
-                    />
-
-                    <div>
-                      <div className="feedMeta">
-                        {
-                          article.category
-                        }
-                        {" · "}
-                        {article.source}
-                      </div>
-
-                      <a
-                        href={
-                          article.url
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="feedTitle"
-                      >
-                        {article.title}
-                      </a>
-                    </div>
-                  </article>
-                )
-              )}
-          </div>
-        </div>
-
-        <div className="card trendsCard">
-          <div className="cardHeader">
-            <div>
-              <div className="eyebrow">
-                MEDIA INTELLIGENCE
-              </div>
-
-              <h2>
-                Trending narratives
-              </h2>
-            </div>
-
-            <TrendingUp size={18} />
-          </div>
-
-          <div className="trendsList">
-            {trends.map(
-              (
-                [name, delta],
-                index
-              ) => (
-                <div
-                  className="trendRow"
-                  key={name}
-                >
-                  <span>{name}</span>
-
-                  <div className="spark">
-                    <span
-                      style={{
-                        width: `${
-                          62 +
-                          index * 7
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                  <strong>
-                    {delta}
-                  </strong>
-                </div>
-              )
-            )}
-          </div>
-        </div>
       </section>
 
       <footer>
@@ -566,8 +456,7 @@ export default function Home() {
         </div>
 
         <div>
-          Independent monitoring and
-          analysis
+          Independent monitoring and analysis
         </div>
       </footer>
     </main>
@@ -637,15 +526,11 @@ function formatArticleTime(
 function getSeverity(
   article: Article
 ) {
-  if (
-    article.relevance >= 10
-  ) {
+  if (article.relevance >= 10) {
     return "high";
   }
 
-  if (
-    article.relevance >= 6
-  ) {
+  if (article.relevance >= 6) {
     return "medium";
   }
 
