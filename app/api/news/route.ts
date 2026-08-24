@@ -45,7 +45,7 @@ const searches = [
 
 function decodeXml(value: string) {
   return value
-    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
@@ -65,8 +65,12 @@ function getTag(block: string, tag: string) {
   return match ? decodeXml(match[1].trim()) : "";
 }
 
-function parseFeed(xml: string, category: string): NewsItem[] {
-  const items = xml.match(/<item>[\s\S]*?<\/item>/gi) || [];
+function parseFeed(
+  xml: string,
+  category: string
+): NewsItem[] {
+  const items =
+    xml.match(/<item>[\s\S]*?<\/item>/gi) || [];
 
   return items.map((item) => {
     let source = getTag(item, "source");
@@ -161,10 +165,13 @@ export async function GET() {
         return true;
       })
       .sort((a, b) => {
-        return (
-          new Date(b.pubDate).getTime() -
-          new Date(a.pubDate).getTime()
-        );
+        const timeA =
+          new Date(a.pubDate).getTime() || 0;
+
+        const timeB =
+          new Date(b.pubDate).getTime() || 0;
+
+        return timeB - timeA;
       })
       .slice(0, 50)
       .map((article, index) => ({
