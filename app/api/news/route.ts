@@ -43,6 +43,44 @@ const searches = [
   },
 ];
 
+const strongTerms = [
+  "yemen",
+  "yemeni",
+  "houthi",
+  "houthis",
+  "ansarallah",
+  "sanaa",
+  "sana'a",
+  "aden",
+  "hudaydah",
+  "hodeidah",
+  "marib",
+  "taiz",
+  "mukalla",
+  "socotra",
+  "bab al-mandab",
+  "bab el-mandeb",
+  "red sea",
+  "gulf of aden",
+];
+
+const blockedTerms = [
+  "football",
+  "soccer",
+  "cricket",
+  "basketball",
+  "asian cup",
+  "world cup",
+  "u20",
+  "u-20",
+  "coffeehouse",
+  "coffee shop",
+  "restaurant",
+  "recipe",
+  "tourism",
+  "travel guide",
+];
+
 function decodeXml(value: string) {
   return value
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -65,6 +103,125 @@ function getTag(block: string, tag: string) {
   return match ? decodeXml(match[1].trim()) : "";
 }
 
+function cleanTitle(title: string) {
+  return title
+    .replace(/\s+-\s+[^-]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTitle(title: string) {
+  return cleanTitle(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\b(the|a|an|of|in|on|to|for|and|with|as|at)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function relevanceScore(title: string) {
+  const text = title.toLowerCase();
+
+  if (
+    blockedTerms.some((term) =>
+      text.includes(term)
+    )
+  ) {
+    return -100;
+  }
+
+  let score = 0;
+
+  strongTerms.forEach((term) => {
+    if (text.includes(term)) {
+      score += 3;
+    }
+  });
+
+  if (
+    text.includes("attack") ||
+    text.includes("strike") ||
+    text.includes("missile") ||
+    text.includes("drone") ||
+    text.includes("ceasefire") ||
+    text.includes("humanitarian") ||
+    text.includes("aid") ||
+    text.includes("tanker") ||
+    text.includes("shipping") ||
+    text.includes("port") ||
+    text.includes("detention") ||
+    text.includes("negotiation")
+  ) {
+    score += 1;
+  }
+
+  return score;
+}
+
+function inferCategory(
+  title: string,
+  fallback: string
+) {
+  const text = title.toLowerCase();
+
+  if (
+    text.includes("ship") ||
+    text.includes("tanker") ||
+    text.includes("red sea") ||
+    text.includes("bab al-mandab") ||
+    text.includes("bab el-mandeb") ||
+    text.includes("gulf of aden") ||
+    text.includes("maritime") ||
+    text.includes("vessel")
+  ) {
+    return "Maritime";
+  }
+
+  if (
+    text.includes("missile") ||
+    text.includes("drone") ||
+    text.includes("attack") ||
+    text.includes("strike") ||
+    text.includes("military") ||
+    text.includes("houthi")
+  ) {
+    return "Security";
+  }
+
+  if (
+    text.includes("humanitarian") ||
+    text.includes("unicef") ||
+    text.includes("aid") ||
+    text.includes("food") ||
+    text.includes("famine") ||
+    text.includes("relief")
+  ) {
+    return "Humanitarian";
+  }
+
+  if (
+    text.includes("economy") ||
+    text.includes("currency") ||
+    text.includes("rial") ||
+    text.includes("oil price") ||
+    text.includes("inflation")
+  ) {
+    return "Economy";
+  }
+
+  if (
+    text.includes("government") ||
+    text.includes("talks") ||
+    text.includes("ceasefire") ||
+    text.includes("negotiation") ||
+    text.includes("political")
+  ) {
+    return "Politics";
+  }
+
+  return fallback;
+}
+
 function parseFeed(
   xml: string,
   category: string
@@ -82,12 +239,17 @@ function parseFeed(
       title = parts.join(" - ");
     }
 
+    title = cleanTitle(title);
+
     return {
       title,
       link: getTag(item, "link"),
       pubDate: getTag(item, "pubDate"),
       source: source || "Google News",
-      category,
+      category: inferCategory(
+        title,
+        category
+      ),
     };
   });
 }
@@ -124,7 +286,10 @@ async function fetchSearch(
 
     const xml = await response.text();
 
-    return parseFeed(xml, category);
+    return parseFeed(
+      xml,
+      category
+    );
   } catch (error) {
     console.error(
       "Google News fetch error",
@@ -152,16 +317,27 @@ export async function GET() {
     const seen = new Set<string>();
 
     const articles = combined
+      .map((article) => ({
+        ...article,
+        score: relevanceScore(
+          article.title
+        ),
+      }))
       .filter((article) => {
-        const key = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "");
+        if (article.score < 3) {
+          return false;
+        }
+
+        const key = normalizeTitle(
+          article.title
+        );
 
         if (!key || seen.has(key)) {
           return false;
         }
 
         seen.add(key);
+
         return true;
       })
       .sort((a, b) => {
@@ -171,9 +347,13 @@ export async function GET() {
         const timeB =
           new Date(b.pubDate).getTime() || 0;
 
-        return timeB - timeA;
+        if (timeB !== timeA) {
+          return timeB - timeA;
+        }
+
+        return b.score - a.score;
       })
-      .slice(0, 50)
+      .slice(0, 40)
       .map((article, index) => ({
         id: index + 1,
         title: article.title,
@@ -181,6 +361,7 @@ export async function GET() {
         date: article.pubDate,
         source: article.source,
         category: article.category,
+        relevance: article.score,
       }));
 
     return NextResponse.json({
