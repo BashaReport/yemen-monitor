@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Activity,
   Bell,
@@ -44,6 +45,45 @@ const categories = [
   "Humanitarian",
   "Economy",
   "General",
+];
+
+const navItems = [
+  {
+    name: "Overview",
+    href: "/",
+  },
+  {
+    name: "Live Feed",
+    href: "/live-feed",
+  },
+  {
+    name: "Map",
+    href: "#",
+  },
+  {
+    name: "Maritime",
+    href: "#",
+  },
+  {
+    name: "Politics",
+    href: "#",
+  },
+  {
+    name: "Humanitarian",
+    href: "#",
+  },
+  {
+    name: "Economy",
+    href: "#",
+  },
+  {
+    name: "Sources",
+    href: "#",
+  },
+  {
+    name: "Briefings",
+    href: "#",
+  },
 ];
 
 export default function Home() {
@@ -93,14 +133,16 @@ export default function Home() {
     }
 
     return articles.filter(
-      (article) => article.category === activeCategory
+      (article) =>
+        article.category === activeCategory
     );
   }, [articles, activeCategory]);
 
   const maritimeCount = useMemo(
     () =>
       articles.filter(
-        (article) => article.category === "Maritime"
+        (article) =>
+          article.category === "Maritime"
       ).length,
     [articles]
   );
@@ -108,7 +150,8 @@ export default function Home() {
   const securityCount = useMemo(
     () =>
       articles.filter(
-        (article) => article.category === "Security"
+        (article) =>
+          article.category === "Security"
       ).length,
     [articles]
   );
@@ -116,12 +159,14 @@ export default function Home() {
   const humanitarianCount = useMemo(
     () =>
       articles.filter(
-        (article) => article.category === "Humanitarian"
+        (article) =>
+          article.category === "Humanitarian"
       ).length,
     [articles]
   );
 
-  const latestArticles = filteredArticles.slice(0, 12);
+  const latestArticles =
+    filteredArticles.slice(0, 12);
 
   const formattedUpdate = updatedAt
     ? new Date(updatedAt).toLocaleTimeString(
@@ -189,28 +234,18 @@ export default function Home() {
           <Menu size={18} />
         </button>
 
-        {[
-          "Overview",
-          "Live Feed",
-          "Map",
-          "Maritime",
-          "Politics",
-          "Humanitarian",
-          "Economy",
-          "Sources",
-          "Briefings",
-        ].map((item, index) => (
-          <a
+        {navItems.map((item, index) => (
+          <Link
             className={
               index === 0
                 ? "activeNav"
                 : ""
             }
-            key={item}
-            href="#"
+            key={item.name}
+            href={item.href}
           >
-            {item}
-          </a>
+            {item.name}
+          </Link>
         ))}
       </nav>
 
@@ -338,9 +373,12 @@ export default function Home() {
               </h2>
             </div>
 
-            <span className="goldPill">
-              {filteredArticles.length} reports
-            </span>
+            <Link
+              href="/live-feed"
+              className="goldPill"
+            >
+              View full feed
+            </Link>
           </div>
 
           <div className="feedList">
