@@ -22,10 +22,7 @@ body {
   min-height: 100%;
   background: var(--ivory-soft);
   color: var(--ink);
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 body {
@@ -50,13 +47,14 @@ main {
   max-width: 1600px;
   margin: 0 auto;
   min-height: 100vh;
-  background:
-    linear-gradient(
-      180deg,
-      #f8f2e9 0%,
-      #efe3d3 100%
-    );
+  background: linear-gradient(
+    180deg,
+    #f8f2e9 0%,
+    #efe3d3 100%
+  );
 }
+
+/* HEADER */
 
 .topbar {
   min-height: 96px;
@@ -74,20 +72,10 @@ main {
   gap: 20px;
 }
 
-.logoMark {
-  width: 74px;
-  height: 58px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--gold);
-  border-radius: 14px;
-  color: var(--burgundy);
-  background: #f3e8d8;
-  font-family: Georgia, serif;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 1px;
+.brandLogo {
+  width: 92px;
+  height: 72px;
+  object-fit: contain;
 }
 
 .brandDivider {
@@ -144,6 +132,8 @@ main {
   font-weight: 700;
 }
 
+/* NAVIGATION */
+
 .navRow {
   min-height: 58px;
   display: flex;
@@ -175,6 +165,8 @@ main {
   height: 36px;
 }
 
+/* LIVE STATUS */
+
 .statusStrip {
   display: flex;
   align-items: center;
@@ -200,8 +192,7 @@ main {
   height: 7px;
   border-radius: 50%;
   background: #d79a28;
-  box-shadow:
-    0 0 0 4px rgba(215, 154, 40, 0.15);
+  box-shadow: 0 0 0 4px rgba(215, 154, 40, 0.15);
 }
 
 .statusItem {
@@ -211,6 +202,8 @@ main {
   opacity: 0.82;
   white-space: nowrap;
 }
+
+/* HERO */
 
 .hero {
   display: flex;
@@ -277,6 +270,8 @@ h2 {
   border-color: var(--burgundy);
 }
 
+/* METRICS */
+
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -288,8 +283,7 @@ h2 {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow:
-    0 12px 40px rgba(70, 30, 20, 0.04);
+  box-shadow: 0 12px 40px rgba(70, 30, 20, 0.04);
 }
 
 .metricCard {
@@ -330,6 +324,8 @@ h2 {
   font-size: 11px;
 }
 
+/* DASHBOARD */
+
 .dashboardGrid {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
@@ -360,6 +356,8 @@ h2 {
   font-weight: 800;
 }
 
+/* DAILY BRIEF */
+
 .briefingCard {
   min-height: 230px;
 }
@@ -381,6 +379,8 @@ h2 {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* MAP */
 
 .mapCard {
   grid-row: span 2;
@@ -413,22 +413,21 @@ h2 {
   top: 25%;
   left: 20%;
   background: #d3b995;
-  clip-path:
-    polygon(
-      8% 42%,
-      18% 20%,
-      40% 10%,
-      62% 0,
-      81% 13%,
-      94% 28%,
-      91% 48%,
-      75% 63%,
-      57% 67%,
-      43% 86%,
-      27% 100%,
-      17% 78%,
-      0 69%
-    );
+  clip-path: polygon(
+    8% 42%,
+    18% 20%,
+    40% 10%,
+    62% 0,
+    81% 13%,
+    94% 28%,
+    91% 48%,
+    75% 63%,
+    57% 67%,
+    43% 86%,
+    27% 100%,
+    17% 78%,
+    0 69%
+  );
   opacity: 0.85;
 }
 
@@ -478,8 +477,7 @@ h2 {
   border: 2px solid #f8f1e8;
   border-radius: 50%;
   background: var(--gold);
-  box-shadow:
-    0 0 0 4px rgba(168, 102, 4, 0.18);
+  box-shadow: 0 0 0 4px rgba(168, 102, 4, 0.18);
 }
 
 .m1 {
@@ -508,6 +506,8 @@ h2 {
   left: 72%;
   top: 64%;
 }
+
+/* INTELLIGENCE FEED */
 
 .feedList {
   display: flex;
@@ -564,6 +564,8 @@ h2 {
   line-height: 1.4;
 }
 
+/* MEDIA TRENDS */
+
 .trendsList {
   display: flex;
   flex-direction: column;
@@ -598,6 +600,8 @@ h2 {
   background: var(--burgundy);
 }
 
+/* FOOTER */
+
 footer {
   display: flex;
   justify-content: space-between;
@@ -609,6 +613,8 @@ footer {
   letter-spacing: 1px;
   text-transform: uppercase;
 }
+
+/* TABLET */
 
 @media (max-width: 980px) {
   .metricsGrid {
@@ -633,6 +639,8 @@ footer {
   }
 }
 
+/* MOBILE */
+
 @media (max-width: 620px) {
   .topbar,
   .navRow,
@@ -646,6 +654,11 @@ footer {
 
   .topbar {
     min-height: 82px;
+  }
+
+  .brandLogo {
+    width: 72px;
+    height: 58px;
   }
 
   .brandDivider {
