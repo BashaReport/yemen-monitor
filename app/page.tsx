@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   Activity,
   Anchor,
@@ -57,7 +58,14 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brandWrap">
-          <div className="logoMark">BR</div>
+          <Image
+  src="/brand/basha-report-logo.png"
+  alt="Basha Report"
+  width={110}
+  height={104}
+  className="brandLogo"
+  priority
+/>
 
           <div className="brandDivider" />
 
