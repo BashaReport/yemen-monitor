@@ -897,3 +897,73 @@ footer {
     grid-column: 1 / -1;
   }
 }
+.liveFeedControls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.secondaryFilters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selectWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.selectWrap > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.selectBox {
+  position: relative;
+  min-width: 190px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.selectBox select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 36px 0 12px;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--burgundy);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.selectBox svg {
+  position: absolute;
+  right: 11px;
+  pointer-events: none;
+  color: var(--gold);
+}
+
+@media (max-width: 620px) {
+  .secondaryFilters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .selectBox {
+    min-width: 0;
+    width: 100%;
+  }
+}
