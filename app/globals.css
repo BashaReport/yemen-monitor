@@ -698,3 +698,61 @@ footer {
     display: none;
   }
 }
+.filterCard {
+  margin: 0 38px 14px;
+}
+
+.categoryFilters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.categoryButton {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--burgundy);
+  border-radius: 999px;
+  padding: 9px 13px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.categoryButton span {
+  color: var(--gold);
+  font-size: 10px;
+}
+
+.activeCategoryButton {
+  background: var(--burgundy);
+  border-color: var(--burgundy);
+  color: #f8ead6;
+}
+
+.activeCategoryButton span {
+  color: #f4cc7d;
+}
+
+.fullFeedCard {
+  min-height: 620px;
+}
+
+@media (max-width: 620px) {
+  .filterCard {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .categoryFilters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .categoryButton {
+    white-space: nowrap;
+  }
+}
