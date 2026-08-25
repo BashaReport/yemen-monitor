@@ -13,24 +13,31 @@ type SocialItem = {
   status: string;
 };
 
+type BlueskySession = {
+  accessJwt: string;
+  refreshJwt: string;
+  did: string;
+  handle: string;
+};
+
 const searches = [
   "Yemen",
   "Houthis",
   "Sanaa",
   "Aden",
-  "\"Red Sea\"",
+  "Red Sea",
 ];
 
 function inferTopic(text: string) {
-  const value =
-    text.toLowerCase();
+  const value = text.toLowerCase();
 
   if (
     value.includes("red sea") ||
     value.includes("ship") ||
     value.includes("tanker") ||
     value.includes("vessel") ||
-    value.includes("bab al-mandab")
+    value.includes("bab al-mandab") ||
+    value.includes("bab el-mandeb")
   ) {
     return "Maritime";
   }
@@ -41,7 +48,8 @@ function inferTopic(text: string) {
     value.includes("strike") ||
     value.includes("missile") ||
     value.includes("drone") ||
-    value.includes("clash")
+    value.includes("clash") ||
+    value.includes("shelling")
   ) {
     return "Security";
   }
@@ -60,7 +68,8 @@ function inferTopic(text: string) {
     value.includes("government") ||
     value.includes("minister") ||
     value.includes("president") ||
-    value.includes("political")
+    value.includes("political") ||
+    value.includes("diplomat")
   ) {
     return "Politics";
   }
@@ -72,27 +81,69 @@ function buildPostUrl(
   handle: string,
   uri: string
 ) {
-  const parts =
-    uri.split("/");
+  const parts = uri.split("/");
+  const rkey = parts[parts.length - 1];
 
-  const rkey =
-    parts[
-      parts.length - 1
-    ];
+  return `https://bsky.app/profile/${handle}/post/${rkey}`;
+}
 
-  return (
-    "https://bsky.app/profile/" +
-    handle +
-    "/post/" +
-    rkey
+async function createBlueskySession(): Promise<BlueskySession> {
+  const identifier =
+    process.env.BLUESKY_IDENTIFIER;
+
+  const password =
+    process.env.BLUESKY_APP_PASSWORD;
+
+  if (!identifier || !password) {
+    throw new Error(
+      "Bluesky environment variables are missing"
+    );
+  }
+
+  const response = await fetch(
+    "https://bsky.social/xrpc/com.atproto.server.createSession",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+        Accept:
+          "application/json",
+      },
+      body: JSON.stringify({
+        identifier,
+        password,
+      }),
+      cache: "no-store",
+    }
   );
+
+  const text =
+    await response.text();
+
+  if (!response.ok) {
+    console.error(
+      "Bluesky login failed",
+      response.status,
+      text
+    );
+
+    throw new Error(
+      `Bluesky login failed with ${response.status}`
+    );
+  }
+
+  return JSON.parse(
+    text
+  ) as BlueskySession;
 }
 
 async function searchBluesky(
-  query: string
+  query: string,
+  accessJwt: string
 ): Promise<SocialItem[]> {
   const url =
-    "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=" +
+    "https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=" +
     encodeURIComponent(query) +
     "&limit=25&sort=latest";
 
@@ -102,34 +153,38 @@ async function searchBluesky(
         url,
         {
           headers: {
+            Authorization:
+              `Bearer ${accessJwt}`,
             Accept:
               "application/json",
           },
-          next: {
-            revalidate: 300,
-          },
+          cache: "no-store",
         }
       );
 
+    const text =
+      await response.text();
+
     if (!response.ok) {
       console.error(
-        "Bluesky request failed",
+        "Bluesky search failed",
         query,
-        response.status
+        response.status,
+        text
       );
 
       return [];
     }
 
     const data =
-      await response.json();
+      JSON.parse(text);
 
     const posts =
       data?.posts || [];
 
     return posts.map(
       (post: any) => {
-        const text =
+        const postText =
           post?.record?.text ||
           "";
 
@@ -138,8 +193,7 @@ async function searchBluesky(
           "";
 
         const displayName =
-          post?.author
-            ?.displayName ||
+          post?.author?.displayName ||
           handle ||
           "Bluesky";
 
@@ -150,15 +204,21 @@ async function searchBluesky(
           id:
             post?.uri ||
             crypto.randomUUID(),
+
           platform:
             "Bluesky",
+
           account:
             displayName,
+
           handle:
             handle
               ? `@${handle}`
               : "Bluesky",
-          text,
+
+          text:
+            postText,
+
           url:
             handle &&
             post?.uri
@@ -167,14 +227,19 @@ async function searchBluesky(
                   post.uri
                 )
               : "https://bsky.app/",
+
           date:
             post?.record
               ?.createdAt ||
             post?.indexedAt ||
             new Date()
               .toISOString(),
+
           topic:
-            inferTopic(text),
+            inferTopic(
+              postText
+            ),
+
           language:
             Array.isArray(
               langs
@@ -182,6 +247,7 @@ async function searchBluesky(
             langs.length > 0
               ? langs.join(", ")
               : "Unknown",
+
           status:
             "UNVERIFIED",
         };
@@ -189,7 +255,7 @@ async function searchBluesky(
     );
   } catch (error) {
     console.error(
-      "Bluesky fetch error",
+      "Bluesky search error",
       query,
       error
     );
@@ -200,12 +266,16 @@ async function searchBluesky(
 
 export async function GET() {
   try {
+    const session =
+      await createBlueskySession();
+
     const results =
       await Promise.all(
         searches.map(
           (query) =>
             searchBluesky(
-              query
+              query,
+              session.accessJwt
             )
         )
       );
@@ -258,19 +328,26 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+
       updatedAt:
         new Date()
           .toISOString(),
+
+      authenticatedAs:
+        session.handle,
+
       count:
         items.length,
+
       providers: {
         bluesky:
           items.length,
-        reddit:
-          0,
+        reddit: 0,
       },
+
       redditStatus:
         "Awaiting API approval",
+
       items,
     });
   } catch (error) {
@@ -283,7 +360,9 @@ export async function GET() {
       {
         ok: false,
         error:
-          "Unable to load social content",
+          error instanceof Error
+            ? error.message
+            : "Unable to load social content",
         items: [],
       },
       {
