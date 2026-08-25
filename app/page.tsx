@@ -29,11 +29,15 @@ type Article = {
   source: string;
   category: string;
   relevance: number;
+  provider?: string;
 };
 
 type NewsResponse = {
   updatedAt: string;
   count: number;
+  googleCount?: number;
+  reliefWebCount?: number;
+  reliefWebFetched?: number;
   articles: Article[];
 };
 
@@ -97,7 +101,7 @@ const navItems = [
   },
   {
     name: "Sources",
-    href: "#",
+    href: "/sources",
   },
   {
     name: "Briefings",
@@ -106,28 +110,55 @@ const navItems = [
 ];
 
 export default function Home() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [updatedAt, setUpdatedAt] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedHours, setSelectedHours] = useState(24);
+  const [articles, setArticles] =
+    useState<Article[]>([]);
+
+  const [updatedAt, setUpdatedAt] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState(false);
+
+  const [
+    activeCategory,
+    setActiveCategory,
+  ] = useState("All");
+
+  const [
+    selectedHours,
+    setSelectedHours,
+  ] = useState(24);
 
   useEffect(() => {
     async function loadNews() {
       try {
-        const response = await fetch("/api/news", {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          "/api/news",
+          {
+            cache: "no-store",
+          }
+        );
 
         if (!response.ok) {
-          throw new Error("News request failed");
+          throw new Error(
+            "News request failed"
+          );
         }
 
-        const data: NewsResponse = await response.json();
+        const data: NewsResponse =
+          await response.json();
 
-        setArticles(data.articles || []);
-        setUpdatedAt(data.updatedAt || "");
+        setArticles(
+          data.articles || []
+        );
+
+        setUpdatedAt(
+          data.updatedAt || ""
+        );
+
         setError(false);
       } catch (err) {
         console.error(err);
@@ -139,87 +170,132 @@ export default function Home() {
 
     loadNews();
 
-    const interval = window.setInterval(
-      loadNews,
-      300000
-    );
+    const interval =
+      window.setInterval(
+        loadNews,
+        300000
+      );
 
-    return () => window.clearInterval(interval);
+    return () =>
+      window.clearInterval(
+        interval
+      );
   }, []);
 
-  const timeFilteredArticles = useMemo(() => {
-    const cutoff =
-      Date.now() -
-      selectedHours *
-        60 *
-        60 *
-        1000;
+  const timeFilteredArticles =
+    useMemo(() => {
+      const cutoff =
+        Date.now() -
+        selectedHours *
+          60 *
+          60 *
+          1000;
 
-    return articles.filter((article) => {
-      const articleTime =
-        new Date(article.date).getTime();
+      return articles.filter(
+        (article) => {
+          const articleTime =
+            new Date(
+              article.date
+            ).getTime();
 
-      if (Number.isNaN(articleTime)) {
-        return false;
+          if (
+            Number.isNaN(
+              articleTime
+            )
+          ) {
+            return false;
+          }
+
+          return (
+            articleTime >= cutoff
+          );
+        }
+      );
+    }, [
+      articles,
+      selectedHours,
+    ]);
+
+  const filteredArticles =
+    useMemo(() => {
+      if (
+        activeCategory === "All"
+      ) {
+        return timeFilteredArticles;
       }
 
-      return articleTime >= cutoff;
-    });
-  }, [articles, selectedHours]);
+      return timeFilteredArticles.filter(
+        (article) =>
+          article.category ===
+          activeCategory
+      );
+    }, [
+      timeFilteredArticles,
+      activeCategory,
+    ]);
 
-  const filteredArticles = useMemo(() => {
-    if (activeCategory === "All") {
-      return timeFilteredArticles;
-    }
-
-    return timeFilteredArticles.filter(
-      (article) =>
-        article.category === activeCategory
+  const maritimeCount =
+    useMemo(
+      () =>
+        timeFilteredArticles.filter(
+          (article) =>
+            article.category ===
+            "Maritime"
+        ).length,
+      [timeFilteredArticles]
     );
-  }, [
-    timeFilteredArticles,
-    activeCategory,
-  ]);
 
-  const maritimeCount = useMemo(
-    () =>
-      timeFilteredArticles.filter(
-        (article) =>
-          article.category === "Maritime"
-      ).length,
-    [timeFilteredArticles]
-  );
+  const securityCount =
+    useMemo(
+      () =>
+        timeFilteredArticles.filter(
+          (article) =>
+            article.category ===
+            "Security"
+        ).length,
+      [timeFilteredArticles]
+    );
 
-  const securityCount = useMemo(
-    () =>
-      timeFilteredArticles.filter(
-        (article) =>
-          article.category === "Security"
-      ).length,
-    [timeFilteredArticles]
-  );
+  const humanitarianCount =
+    useMemo(
+      () =>
+        timeFilteredArticles.filter(
+          (article) =>
+            article.category ===
+            "Humanitarian"
+        ).length,
+      [timeFilteredArticles]
+    );
 
-  const humanitarianCount = useMemo(
-    () =>
-      timeFilteredArticles.filter(
-        (article) =>
-          article.category === "Humanitarian"
-      ).length,
-    [timeFilteredArticles]
-  );
+  const reliefWebCount =
+    useMemo(
+      () =>
+        timeFilteredArticles.filter(
+          (article) =>
+            article.provider ===
+            "ReliefWeb"
+        ).length,
+      [timeFilteredArticles]
+    );
 
   const latestArticles =
-    filteredArticles.slice(0, 12);
+    filteredArticles.slice(
+      0,
+      12
+    );
 
-  const formattedUpdate = updatedAt
-    ? new Date(updatedAt).toLocaleTimeString(
-        "en-US",
-        {
-          hour: "numeric",
-          minute: "2-digit",
-        }
-      )
-    : "Loading";
+  const formattedUpdate =
+    updatedAt
+      ? new Date(
+          updatedAt
+        ).toLocaleTimeString(
+          "en-US",
+          {
+            hour: "numeric",
+            minute: "2-digit",
+          }
+        )
+      : "Loading";
 
   return (
     <main>
@@ -264,7 +340,9 @@ export default function Home() {
 
           <button className="langButton">
             EN
-            <ChevronDown size={14} />
+            <ChevronDown
+              size={14}
+            />
           </button>
         </div>
       </header>
@@ -277,19 +355,21 @@ export default function Home() {
           <Menu size={18} />
         </button>
 
-        {navItems.map((item, index) => (
-          <Link
-            className={
-              index === 0
-                ? "activeNav"
-                : ""
-            }
-            key={item.name}
-            href={item.href}
-          >
-            {item.name}
-          </Link>
-        ))}
+        {navItems.map(
+          (item, index) => (
+            <Link
+              className={
+                index === 0
+                  ? "activeNav"
+                  : ""
+              }
+              key={item.name}
+              href={item.href}
+            >
+              {item.name}
+            </Link>
+          )
+        )}
       </nav>
 
       <section className="statusStrip">
@@ -300,7 +380,8 @@ export default function Home() {
 
         <div className="statusItem">
           <Clock3 size={14} />
-          Updated {formattedUpdate}
+          Updated{" "}
+          {formattedUpdate}
         </div>
 
         <div className="statusItem">
@@ -310,8 +391,19 @@ export default function Home() {
 
         <div className="statusItem">
           <CircleDot size={14} />
-          {timeFilteredArticles.length} live reports
+          {
+            timeFilteredArticles.length
+          }{" "}
+          live reports
         </div>
+
+        {reliefWebCount > 0 && (
+          <div className="statusItem">
+            <Globe2 size={14} />
+            {reliefWebCount} direct
+            ReliefWeb reports
+          </div>
+        )}
       </section>
 
       <section className="hero">
@@ -320,38 +412,62 @@ export default function Home() {
             SITUATION OVERVIEW
           </div>
 
-          <h1>Yemen Monitor</h1>
+          <h1>
+            Yemen Monitor
+          </h1>
 
           <p>
-            Independent monitoring and analysis of
-            developments in Yemen and the Red Sea.
+            Independent monitoring
+            and analysis of
+            developments in Yemen
+            and the Red Sea.
           </p>
         </div>
 
         <div className="heroControls">
           <label className="homepageTimeFilter">
-            <span>Time window</span>
+            <span>
+              Time window
+            </span>
 
             <div className="selectBox">
               <select
-                value={selectedHours}
-                onChange={(event) =>
+                value={
+                  selectedHours
+                }
+                onChange={(
+                  event
+                ) =>
                   setSelectedHours(
-                    Number(event.target.value)
+                    Number(
+                      event.target
+                        .value
+                    )
                   )
                 }
               >
-                {timeOptions.map((option) => (
-                  <option
-                    key={option.hours}
-                    value={option.hours}
-                  >
-                    Last {option.label}
-                  </option>
-                ))}
+                {timeOptions.map(
+                  (option) => (
+                    <option
+                      key={
+                        option.hours
+                      }
+                      value={
+                        option.hours
+                      }
+                    >
+                      Last{" "}
+                      {
+                        option.label
+                      }
+                    </option>
+                  )
+                )}
               </select>
 
-              <ChevronDown size={14} />
+              <ChevronDown
+                size={14}
+              />
             </div>
           </label>
         </div>
@@ -359,14 +475,24 @@ export default function Home() {
 
       <section className="metricsGrid">
         <Metric
-          icon={<ShieldAlert size={18} />}
+          icon={
+            <ShieldAlert
+              size={18}
+            />
+          }
           label="Security reports"
-          value={String(securityCount)}
+          value={String(
+            securityCount
+          )}
           detail={`Last ${selectedHours} hours`}
         />
 
         <Metric
-          icon={<Activity size={18} />}
+          icon={
+            <Activity
+              size={18}
+            />
+          }
           label="News volume"
           value={String(
             timeFilteredArticles.length
@@ -375,16 +501,26 @@ export default function Home() {
         />
 
         <Metric
-          icon={<Ship size={18} />}
+          icon={
+            <Ship size={18} />
+          }
           label="Maritime reports"
-          value={String(maritimeCount)}
+          value={String(
+            maritimeCount
+          )}
           detail="Red Sea and Gulf of Aden"
         />
 
         <Metric
-          icon={<MapPinned size={18} />}
+          icon={
+            <MapPinned
+              size={18}
+            />
+          }
           label="Humanitarian"
-          value={String(humanitarianCount)}
+          value={String(
+            humanitarianCount
+          )}
           detail={`Last ${selectedHours} hours`}
         />
       </section>
@@ -395,32 +531,44 @@ export default function Home() {
         </div>
 
         <div className="categoryFilters">
-          {categories.map((category) => {
-            const count =
-              category === "All"
-                ? timeFilteredArticles.length
-                : timeFilteredArticles.filter(
-                    (article) =>
-                      article.category === category
-                  ).length;
+          {categories.map(
+            (category) => {
+              const count =
+                category === "All"
+                  ? timeFilteredArticles.length
+                  : timeFilteredArticles.filter(
+                      (
+                        article
+                      ) =>
+                        article.category ===
+                        category
+                    ).length;
 
-            return (
-              <button
-                key={category}
-                className={
-                  activeCategory === category
-                    ? "categoryButton activeCategoryButton"
-                    : "categoryButton"
-                }
-                onClick={() =>
-                  setActiveCategory(category)
-                }
-              >
-                {category}
-                <span>{count}</span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={
+                    category
+                  }
+                  className={
+                    activeCategory ===
+                    category
+                      ? "categoryButton activeCategoryButton"
+                      : "categoryButton"
+                  }
+                  onClick={() =>
+                    setActiveCategory(
+                      category
+                    )
+                  }
+                >
+                  {category}
+                  <span>
+                    {count}
+                  </span>
+                </button>
+              );
+            }
+          )}
         </div>
       </section>
 
@@ -429,11 +577,13 @@ export default function Home() {
           <div className="cardHeader">
             <div>
               <div className="eyebrow">
-                LATEST DEVELOPMENTS
+                LATEST
+                DEVELOPMENTS
               </div>
 
               <h2>
-                {activeCategory === "All"
+                {activeCategory ===
+                "All"
                   ? `Live Yemen intelligence feed · ${selectedHours}h`
                   : `${activeCategory} reporting · ${selectedHours}h`}
               </h2>
@@ -450,65 +600,97 @@ export default function Home() {
           <div className="feedList">
             {loading && (
               <div className="feedItem">
-                Loading live reports...
+                Loading live
+                reports...
               </div>
             )}
 
             {error && (
               <div className="feedItem">
-                Unable to load live reporting.
+                Unable to load
+                live reporting.
               </div>
             )}
 
             {!loading &&
               !error &&
-              latestArticles.length === 0 && (
+              latestArticles.length ===
+                0 && (
                 <div className="feedItem">
-                  No reports in this category during
-                  the selected time window.
+                  No reports in
+                  this category
+                  during the
+                  selected time
+                  window.
                 </div>
               )}
 
             {!loading &&
               !error &&
-              latestArticles.map((article) => (
-                <article
-                  className="feedItem"
-                  key={article.id}
-                >
-                  <div className="timeCol">
-                    {formatArticleTime(
-                      article.date
-                    )}
-                  </div>
-
-                  <div
-                    className={`severity ${getSeverity(
-                      article
-                    )}`}
-                  />
-
-                  <div>
-                    <div className="feedMeta">
-                      {article.category}
-                      {" · "}
-                      {article.source}
-                      {" · "}
-                      Relevance{" "}
-                      {article.relevance}
+              latestArticles.map(
+                (article) => (
+                  <article
+                    className="feedItem"
+                    key={
+                      article.id
+                    }
+                  >
+                    <div className="timeCol">
+                      {formatArticleTime(
+                        article.date
+                      )}
                     </div>
 
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="feedTitle"
-                    >
-                      {article.title}
-                    </a>
-                  </div>
-                </article>
-              ))}
+                    <div
+                      className={`severity ${getSeverity(
+                        article
+                      )}`}
+                    />
+
+                    <div>
+                      <div className="feedMeta">
+                        {
+                          article.category
+                        }
+                        {" · "}
+                        {
+                          article.source
+                        }
+
+                        {article.provider ===
+                          "ReliefWeb" && (
+                          <>
+                            {" · "}
+                            <span className="reliefWebLabel">
+                              DIRECT
+                              RELIEFWEB
+                            </span>
+                          </>
+                        )}
+
+                        {" · "}
+                        Relevance{" "}
+                        {
+                          article.relevance
+                        }
+                      </div>
+
+                      <a
+                        href={
+                          article.url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="feedTitle"
+                      >
+                        {
+                          article.title
+                        }
+                      </a>
+                    </div>
+                  </article>
+                )
+              )}
           </div>
         </div>
 
@@ -557,11 +739,13 @@ export default function Home() {
 
       <footer>
         <div>
-          Basha Report · Yemen Monitor
+          Basha Report · Yemen
+          Monitor
         </div>
 
         <div>
-          Independent monitoring and analysis
+          Independent monitoring
+          and analysis
         </div>
       </footer>
     </main>
@@ -609,7 +793,8 @@ function formatArticleTime(
     return "";
   }
 
-  const parsed = new Date(date);
+  const parsed =
+    new Date(date);
 
   if (
     Number.isNaN(
@@ -631,11 +816,15 @@ function formatArticleTime(
 function getSeverity(
   article: Article
 ) {
-  if (article.relevance >= 10) {
+  if (
+    article.relevance >= 10
+  ) {
     return "high";
   }
 
-  if (article.relevance >= 6) {
+  if (
+    article.relevance >= 6
+  ) {
     return "medium";
   }
 
