@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 
 type SocialItem = {
@@ -14,55 +13,54 @@ type SocialItem = {
   status: string;
 };
 
-const REDDIT_URL =
-  "https://www.reddit.com/search.json?q=" +
-  encodeURIComponent(
-    'Yemen OR Houthis OR Sanaa OR Aden OR "Red Sea"'
-  ) +
-  "&sort=new&t=day&limit=25";
+const searches = [
+  "Yemen",
+  "Houthis",
+  "Sanaa",
+  "Aden",
+  "\"Red Sea\"",
+];
 
-function inferTopic(
-  title: string
-) {
-  const text =
-    title.toLowerCase();
+function inferTopic(text: string) {
+  const value =
+    text.toLowerCase();
 
   if (
-    text.includes("red sea") ||
-    text.includes("ship") ||
-    text.includes("tanker") ||
-    text.includes("vessel") ||
-    text.includes("bab al-mandab")
+    value.includes("red sea") ||
+    value.includes("ship") ||
+    value.includes("tanker") ||
+    value.includes("vessel") ||
+    value.includes("bab al-mandab")
   ) {
     return "Maritime";
   }
 
   if (
-    text.includes("houthi") ||
-    text.includes("attack") ||
-    text.includes("strike") ||
-    text.includes("missile") ||
-    text.includes("drone") ||
-    text.includes("clash")
+    value.includes("houthi") ||
+    value.includes("attack") ||
+    value.includes("strike") ||
+    value.includes("missile") ||
+    value.includes("drone") ||
+    value.includes("clash")
   ) {
     return "Security";
   }
 
   if (
-    text.includes("aid") ||
-    text.includes("humanitarian") ||
-    text.includes("food") ||
-    text.includes("health") ||
-    text.includes("displacement")
+    value.includes("aid") ||
+    value.includes("humanitarian") ||
+    value.includes("food") ||
+    value.includes("health") ||
+    value.includes("displacement")
   ) {
     return "Humanitarian";
   }
 
   if (
-    text.includes("government") ||
-    text.includes("minister") ||
-    text.includes("president") ||
-    text.includes("political")
+    value.includes("government") ||
+    value.includes("minister") ||
+    value.includes("president") ||
+    value.includes("political")
   ) {
     return "Politics";
   }
@@ -70,15 +68,42 @@ function inferTopic(
   return "General";
 }
 
-export async function GET() {
+function buildPostUrl(
+  handle: string,
+  uri: string
+) {
+  const parts =
+    uri.split("/");
+
+  const rkey =
+    parts[
+      parts.length - 1
+    ];
+
+  return (
+    "https://bsky.app/profile/" +
+    handle +
+    "/post/" +
+    rkey
+  );
+}
+
+async function searchBluesky(
+  query: string
+): Promise<SocialItem[]> {
+  const url =
+    "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=" +
+    encodeURIComponent(query) +
+    "&limit=25&sort=latest";
+
   try {
     const response =
       await fetch(
-        REDDIT_URL,
+        url,
         {
           headers: {
-            "User-Agent":
-              "BashaReport-YemenMonitor/1.0",
+            Accept:
+              "application/json",
           },
           next: {
             revalidate: 300,
@@ -87,94 +112,165 @@ export async function GET() {
       );
 
     if (!response.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Reddit request failed",
-          status:
-            response.status,
-          items: [],
-        },
-        {
-          status: 200,
-        }
+      console.error(
+        "Bluesky request failed",
+        query,
+        response.status
       );
+
+      return [];
     }
 
     const data =
       await response.json();
 
-    const children =
-      data?.data?.children || [];
+    const posts =
+      data?.posts || [];
 
-    const items: SocialItem[] =
-      children
-        .map(
-          (entry: any) => {
-            const post =
-              entry?.data;
+    return posts.map(
+      (post: any) => {
+        const text =
+          post?.record?.text ||
+          "";
 
-            if (!post) {
-              return null;
+        const handle =
+          post?.author?.handle ||
+          "";
+
+        const displayName =
+          post?.author
+            ?.displayName ||
+          handle ||
+          "Bluesky";
+
+        const langs =
+          post?.record?.langs;
+
+        return {
+          id:
+            post?.uri ||
+            crypto.randomUUID(),
+          platform:
+            "Bluesky",
+          account:
+            displayName,
+          handle:
+            handle
+              ? `@${handle}`
+              : "Bluesky",
+          text,
+          url:
+            handle &&
+            post?.uri
+              ? buildPostUrl(
+                  handle,
+                  post.uri
+                )
+              : "https://bsky.app/",
+          date:
+            post?.record
+              ?.createdAt ||
+            post?.indexedAt ||
+            new Date()
+              .toISOString(),
+          topic:
+            inferTopic(text),
+          language:
+            Array.isArray(
+              langs
+            ) &&
+            langs.length > 0
+              ? langs.join(", ")
+              : "Unknown",
+          status:
+            "UNVERIFIED",
+        };
+      }
+    );
+  } catch (error) {
+    console.error(
+      "Bluesky fetch error",
+      query,
+      error
+    );
+
+    return [];
+  }
+}
+
+export async function GET() {
+  try {
+    const results =
+      await Promise.all(
+        searches.map(
+          (query) =>
+            searchBluesky(
+              query
+            )
+        )
+      );
+
+    const combined =
+      results.flat();
+
+    const seen =
+      new Set<string>();
+
+    const items =
+      combined
+        .filter(
+          (item) => {
+            if (
+              !item.text ||
+              !item.url
+            ) {
+              return false;
             }
 
-            const title =
-              post.title || "";
+            if (
+              seen.has(
+                item.id
+              )
+            ) {
+              return false;
+            }
 
-            return {
-              id:
-                post.id ||
-                crypto.randomUUID(),
-              platform:
-                "Reddit",
-              account:
-                post.subreddit_name_prefixed ||
-                "Reddit",
-              handle:
-                post.author
-                  ? `u/${post.author}`
-                  : "Reddit",
-              text:
-                title,
-              url:
-                post.permalink
-                  ? `https://www.reddit.com${post.permalink}`
-                  : "https://www.reddit.com/",
-              date:
-                post.created_utc
-                  ? new Date(
-                      post.created_utc *
-                        1000
-                    ).toISOString()
-                  : new Date().toISOString(),
-              topic:
-                inferTopic(
-                  title
-                ),
-              language:
-                "English",
-              status:
-                "UNVERIFIED",
-            };
+            seen.add(
+              item.id
+            );
+
+            return true;
           }
         )
-        .filter(Boolean)
+        .sort(
+          (a, b) =>
+            new Date(
+              b.date
+            ).getTime() -
+            new Date(
+              a.date
+            ).getTime()
+        )
         .slice(
           0,
-          25
-        ) as SocialItem[];
+          50
+        );
 
     return NextResponse.json({
       ok: true,
       updatedAt:
-        new Date().toISOString(),
+        new Date()
+          .toISOString(),
       count:
         items.length,
       providers: {
-        reddit:
+        bluesky:
           items.length,
+        reddit:
+          0,
       },
+      redditStatus:
+        "Awaiting API approval",
       items,
     });
   } catch (error) {
