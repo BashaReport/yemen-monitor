@@ -8,9 +8,11 @@ import {
   ChevronDown,
   CircleDot,
   Clock3,
+  ExternalLink,
   Globe2,
   MapPinned,
   Menu,
+  MessageCircle,
   Search,
   ShieldAlert,
   Ship,
@@ -39,6 +41,32 @@ type NewsResponse = {
   reliefWebCount?: number;
   reliefWebFetched?: number;
   articles: Article[];
+};
+
+type SocialItem = {
+  id: string;
+  platform: string;
+  account: string;
+  handle: string;
+  text: string;
+  url: string;
+  date: string;
+  topic: string;
+  language: string;
+  status: string;
+  relevance: number;
+};
+
+type SocialResponse = {
+  ok: boolean;
+  updatedAt?: string;
+  count?: number;
+  providers?: {
+    bluesky?: number;
+    reddit?: number;
+  };
+  redditStatus?: string;
+  items?: SocialItem[];
 };
 
 const categories = [
@@ -78,6 +106,10 @@ const navItems = [
   {
     name: "Live Feed",
     href: "/live-feed",
+  },
+  {
+    name: "Social",
+    href: "/social",
   },
   {
     name: "Map",
@@ -132,6 +164,21 @@ export default function Home() {
     setSelectedHours,
   ] = useState(24);
 
+  const [
+    socialItems,
+    setSocialItems,
+  ] = useState<SocialItem[]>([]);
+
+  const [
+    socialCount,
+    setSocialCount,
+  ] = useState(0);
+
+  const [
+    socialLoading,
+    setSocialLoading,
+  ] = useState(true);
+
   useEffect(() => {
     async function loadNews() {
       try {
@@ -168,11 +215,52 @@ export default function Home() {
       }
     }
 
+    async function loadSocial() {
+      try {
+        const response = await fetch(
+          "/api/social",
+          {
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Social request failed"
+          );
+        }
+
+        const data: SocialResponse =
+          await response.json();
+
+        if (data.ok) {
+          setSocialItems(
+            data.items || []
+          );
+
+          setSocialCount(
+            data.count || 0
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Social homepage error",
+          err
+        );
+      } finally {
+        setSocialLoading(false);
+      }
+    }
+
     loadNews();
+    loadSocial();
 
     const interval =
       window.setInterval(
-        loadNews,
+        () => {
+          loadNews();
+          loadSocial();
+        },
         300000
       );
 
@@ -283,6 +371,9 @@ export default function Home() {
       0,
       12
     );
+
+  const latestSocial =
+    socialItems[0];
 
   const formattedUpdate =
     updatedAt
@@ -404,6 +495,18 @@ export default function Home() {
             ReliefWeb reports
           </div>
         )}
+
+        {socialCount > 0 && (
+          <Link
+            href="/social"
+            className="statusItem"
+          >
+            <MessageCircle
+              size={14}
+            />
+            {socialCount} social posts
+          </Link>
+        )}
       </section>
 
       <section className="hero">
@@ -523,6 +626,177 @@ export default function Home() {
           )}
           detail={`Last ${selectedHours} hours`}
         />
+      </section>
+
+      <section
+        style={{
+          padding:
+            "0 38px 14px",
+        }}
+      >
+        <Link
+          href="/social"
+          className="card"
+          style={{
+            display: "block",
+            padding: "20px",
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
+              gap: "20px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "15px",
+                alignItems:
+                  "flex-start",
+              }}
+            >
+              <div className="metricIcon">
+                <MessageCircle
+                  size={19}
+                />
+              </div>
+
+              <div>
+                <div className="eyebrow">
+                  LIVE SOCIAL MONITORING
+                </div>
+
+                <h2
+                  style={{
+                    marginBottom:
+                      "7px",
+                  }}
+                >
+                  Social Monitor
+                </h2>
+
+                <p
+                  style={{
+                    marginBottom: 0,
+                    maxWidth:
+                      "760px",
+                    color:
+                      "#6c5a54",
+                    fontSize:
+                      "13px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {socialLoading
+                    ? "Loading public social reporting..."
+                    : latestSocial
+                    ? latestSocial.text
+                    : "Monitor public Yemen and Red Sea reporting across connected social platforms."}
+                </p>
+
+                {latestSocial && (
+                  <div
+                    style={{
+                      marginTop:
+                        "10px",
+                      color:
+                        "#a86604",
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        700,
+                      letterSpacing:
+                        "0.7px",
+                      textTransform:
+                        "uppercase",
+                    }}
+                  >
+                    {
+                      latestSocial.platform
+                    }
+                    {" · "}
+                    {
+                      latestSocial.topic
+                    }
+                    {" · "}
+                    {
+                      latestSocial.status
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div
+              style={{
+                minWidth:
+                  "150px",
+                textAlign:
+                  "right",
+              }}
+            >
+              <div
+                style={{
+                  color:
+                    "#320303",
+                  fontFamily:
+                    "Georgia, serif",
+                  fontSize:
+                    "30px",
+                }}
+              >
+                {
+                  socialCount
+                }
+              </div>
+
+              <div
+                style={{
+                  color:
+                    "#75655e",
+                  fontSize:
+                    "10px",
+                  textTransform:
+                    "uppercase",
+                  letterSpacing:
+                    "0.8px",
+                }}
+              >
+                Live posts
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "13px",
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  gap: "6px",
+                  color:
+                    "#a86604",
+                  fontSize:
+                    "11px",
+                  fontWeight:
+                    700,
+                }}
+              >
+                Open Social Monitor
+                <ExternalLink
+                  size={13}
+                />
+              </div>
+            </div>
+          </div>
+        </Link>
       </section>
 
       <section className="card filterCard">
