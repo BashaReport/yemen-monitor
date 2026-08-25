@@ -1,4 +1,18 @@
-import { NextResponse } from "next/server";
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CircleAlert,
+  ExternalLink,
+  Search,
+} from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type SocialItem = {
   id: string;
@@ -14,682 +28,709 @@ type SocialItem = {
   relevance: number;
 };
 
-type BlueskySession = {
-  accessJwt: string;
-  refreshJwt: string;
-  did: string;
-  handle: string;
+type SocialResponse = {
+  ok: boolean;
+  updatedAt?: string;
+  authenticatedAs?: string;
+  count?: number;
+
+  providers?: {
+    bluesky?: number;
+    reddit?: number;
+  };
+
+  redditStatus?: string;
+
+  topicCounts?: Record<
+    string,
+    number
+  >;
+
+  languageCounts?: Record<
+    string,
+    number
+  >;
+
+  items?: SocialItem[];
+
+  error?: string;
 };
 
-const searches = [
-  "Yemen",
-  "Houthis",
-  "Sanaa Yemen",
-  "Aden Yemen",
-  "\"Red Sea\" Yemen",
-  "\"Bab al-Mandab\"",
-  "اليمن",
-  "الحوثي",
-  "الحوثيين",
-  "صنعاء",
-  "عدن اليمن",
-  "البحر الأحمر",
-  "باب المندب",
+const topics = [
+  "All",
+  "Security",
+  "Maritime",
+  "Politics",
+  "Humanitarian",
+  "General",
 ];
 
-const strongTerms = [
-  "yemen",
-  "yemeni",
-  "houthis",
-  "houthi",
-  "ansar allah",
-  "ansarallah",
-  "sanaa",
-  "sana'a",
-  "aden",
-  "hudaydah",
-  "hodeidah",
-  "marib",
-  "taiz",
-  "hadramout",
-  "shabwa",
-  "saada",
-  "red sea",
-  "gulf of aden",
-  "bab al-mandab",
-  "bab el-mandeb",
-  "اليمن",
-  "يمني",
-  "يمنية",
-  "الحوثي",
-  "الحوثيين",
-  "أنصار الله",
-  "صنعاء",
-  "عدن",
-  "الحديدة",
-  "مأرب",
-  "تعز",
-  "حضرموت",
-  "شبوة",
-  "صعدة",
-  "البحر الأحمر",
-  "خليج عدن",
-  "باب المندب",
+const platforms = [
+  "All",
+  "Bluesky",
+  "Reddit",
 ];
 
-const highSignalTerms = [
-  "missile",
-  "drone",
-  "attack",
-  "strike",
-  "airstrike",
-  "shelling",
-  "clash",
-  "military",
-  "ceasefire",
-  "detained",
-  "detention",
-  "humanitarian",
-  "aid",
-  "displacement",
-  "famine",
-  "shipping",
-  "tanker",
-  "vessel",
-  "seafarer",
-  "port",
-  "blockade",
-  "sanctions",
-  "explosive",
-  "mine",
-  "government",
-  "minister",
-  "president",
-  "negotiations",
-  "مسيّرة",
-  "مسيرة",
-  "صاروخ",
-  "هجوم",
-  "غارة",
-  "قصف",
-  "اشتباكات",
-  "عسكري",
-  "هدنة",
-  "احتجاز",
-  "مساعدات",
-  "نازحين",
-  "نزوح",
-  "سفينة",
-  "ناقلة",
-  "ميناء",
-  "حصار",
-  "عقوبات",
-  "حكومة",
-  "وزير",
-  "رئيس",
-];
+export default function SocialMonitorPage() {
+  const [items, setItems] =
+    useState<SocialItem[]>([]);
 
-const blockedTerms = [
-  "football",
-  "soccer",
-  "basketball",
-  "tennis",
-  "cricket",
-  "premier league",
-  "champions league",
-  "world cup",
-  "match",
-  "fixture",
-  "score",
-  "webtoon",
-  "comicartist",
-  "comic artist",
-  "romance",
-  "recipe",
-  "restaurant",
-  "vacation",
-  "travel guide",
-  "hotel",
-  "gaming",
-  "birthday party",
-  "weather",
-  "temperature",
-  "climatecrisis",
-  "الدوري",
-  "مباراة",
-  "كرة القدم",
-  "تشيلسي",
-  "فولهام",
-  "الاتحاد",
-  "الحزم",
-];
+  const [search, setSearch] =
+    useState("");
 
-function inferTopic(text: string) {
-  const value = text.toLowerCase();
+  const [
+    activePlatform,
+    setActivePlatform,
+  ] = useState("All");
 
-  if (
-    value.includes("red sea") ||
-    value.includes("gulf of aden") ||
-    value.includes("bab al-mandab") ||
-    value.includes("bab el-mandeb") ||
-    value.includes("ship") ||
-    value.includes("tanker") ||
-    value.includes("vessel") ||
-    value.includes("shipping") ||
-    value.includes("seafarer") ||
-    value.includes("البحر الأحمر") ||
-    value.includes("خليج عدن") ||
-    value.includes("باب المندب") ||
-    value.includes("سفينة") ||
-    value.includes("ناقلة")
-  ) {
-    return "Maritime";
-  }
+  const [
+    activeTopic,
+    setActiveTopic,
+  ] = useState("All");
 
-  if (
-    value.includes("houthi") ||
-    value.includes("houthis") ||
-    value.includes("attack") ||
-    value.includes("strike") ||
-    value.includes("missile") ||
-    value.includes("drone") ||
-    value.includes("clash") ||
-    value.includes("shelling") ||
-    value.includes("military") ||
-    value.includes("الحوثي") ||
-    value.includes("الحوثيين") ||
-    value.includes("هجوم") ||
-    value.includes("قصف") ||
-    value.includes("صاروخ") ||
-    value.includes("مسيرة") ||
-    value.includes("مسيّرة") ||
-    value.includes("اشتباكات")
-  ) {
-    return "Security";
-  }
-
-  if (
-    value.includes("humanitarian") ||
-    value.includes("aid") ||
-    value.includes("food") ||
-    value.includes("famine") ||
-    value.includes("health") ||
-    value.includes("displacement") ||
-    value.includes("refugee") ||
-    value.includes("مساعدات") ||
-    value.includes("نزوح") ||
-    value.includes("نازحين") ||
-    value.includes("غذاء") ||
-    value.includes("صحة")
-  ) {
-    return "Humanitarian";
-  }
-
-  if (
-    value.includes("government") ||
-    value.includes("minister") ||
-    value.includes("president") ||
-    value.includes("political") ||
-    value.includes("negotiation") ||
-    value.includes("diplomat") ||
-    value.includes("حكومة") ||
-    value.includes("وزير") ||
-    value.includes("رئيس") ||
-    value.includes("سياسي") ||
-    value.includes("مفاوضات")
-  ) {
-    return "Politics";
-  }
-
-  return "General";
-}
-
-function containsBlockedTerm(text: string) {
-  const value = text.toLowerCase();
-
-  return blockedTerms.some((term) =>
-    value.includes(term)
+  const [
+    redditStatus,
+    setRedditStatus,
+  ] = useState(
+    "Awaiting API approval"
   );
-}
 
-function relevanceScore(text: string) {
-  const value = text.toLowerCase();
+  const [
+    authenticatedAs,
+    setAuthenticatedAs,
+  ] = useState("");
 
-  if (containsBlockedTerm(value)) {
-    return -100;
-  }
+  const [
+    updatedAt,
+    setUpdatedAt,
+  ] = useState("");
 
-  let score = 0;
+  const [loading, setLoading] =
+    useState(true);
 
-  strongTerms.forEach((term) => {
-    if (value.includes(term)) {
-      score += 3;
+  const [error, setError] =
+    useState(false);
+
+  useEffect(() => {
+    async function loadSocial() {
+      try {
+        const response =
+          await fetch(
+            "/api/social",
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Social request failed"
+          );
+        }
+
+        const data: SocialResponse =
+          await response.json();
+
+        if (!data.ok) {
+          throw new Error(
+            data.error ||
+              "Social API returned an error"
+          );
+        }
+
+        setItems(
+          data.items || []
+        );
+
+        setRedditStatus(
+          data.redditStatus ||
+            "Awaiting API approval"
+        );
+
+        setAuthenticatedAs(
+          data.authenticatedAs ||
+            ""
+        );
+
+        setUpdatedAt(
+          data.updatedAt || ""
+        );
+
+        setError(false);
+      } catch (err) {
+        console.error(err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
     }
-  });
 
-  highSignalTerms.forEach((term) => {
-    if (value.includes(term)) {
-      score += 1;
-    }
-  });
+    loadSocial();
 
-  return score;
-}
+    const interval =
+      window.setInterval(
+        loadSocial,
+        300000
+      );
 
-function hasStrongYemenContext(text: string) {
-  const value = text.toLowerCase();
+    return () =>
+      window.clearInterval(
+        interval
+      );
+  }, []);
 
-  return strongTerms.some((term) =>
-    value.includes(term)
-  );
-}
+  const filtered =
+    useMemo(() => {
+      const query =
+        search
+          .toLowerCase()
+          .trim();
 
-function isLikelyFalseAdenMatch(text: string) {
-  const value = text.toLowerCase();
+      return items.filter(
+        (item) => {
+          const matchesPlatform =
+            activePlatform ===
+              "All" ||
+            item.platform ===
+              activePlatform;
 
-  if (!value.includes("aden")) {
-    return false;
-  }
+          const matchesTopic =
+            activeTopic ===
+              "All" ||
+            item.topic ===
+              activeTopic;
 
-  const hasOtherYemenSignal =
-    strongTerms.some(
-      (term) =>
-        term !== "aden" &&
-        value.includes(term)
-    );
+          const matchesSearch =
+            !query ||
+            item.text
+              .toLowerCase()
+              .includes(query) ||
+            item.account
+              .toLowerCase()
+              .includes(query) ||
+            item.handle
+              .toLowerCase()
+              .includes(query) ||
+            item.topic
+              .toLowerCase()
+              .includes(query) ||
+            item.language
+              .toLowerCase()
+              .includes(query);
 
-  if (hasOtherYemenSignal) {
-    return false;
-  }
-
-  const falseSignals = [
-    "aden gillett",
-    "good boy, aden",
-    "dear aden",
-    "my friend aden",
-    "aden is",
-  ];
-
-  return falseSignals.some((term) =>
-    value.includes(term)
-  );
-}
-
-function buildPostUrl(
-  handle: string,
-  uri: string
-) {
-  const parts = uri.split("/");
-  const rkey =
-    parts[parts.length - 1];
-
-  return `https://bsky.app/profile/${handle}/post/${rkey}`;
-}
-
-async function createBlueskySession(): Promise<BlueskySession> {
-  const identifier =
-    process.env.BLUESKY_IDENTIFIER;
-
-  const password =
-    process.env.BLUESKY_APP_PASSWORD;
-
-  if (!identifier || !password) {
-    throw new Error(
-      "Bluesky environment variables are missing"
-    );
-  }
-
-  const response = await fetch(
-    "https://bsky.social/xrpc/com.atproto.server.createSession",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-        Accept:
-          "application/json",
-      },
-      body: JSON.stringify({
-        identifier,
-        password,
-      }),
-      cache: "no-store",
-    }
-  );
-
-  const text =
-    await response.text();
-
-  if (!response.ok) {
-    console.error(
-      "Bluesky login failed",
-      response.status,
-      text
-    );
-
-    throw new Error(
-      `Bluesky login failed with ${response.status}`
-    );
-  }
-
-  return JSON.parse(
-    text
-  ) as BlueskySession;
-}
-
-async function searchBluesky(
-  query: string,
-  accessJwt: string
-): Promise<SocialItem[]> {
-  const url =
-    "https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=" +
-    encodeURIComponent(query) +
-    "&limit=30&sort=latest";
-
-  try {
-    const response =
-      await fetch(
-        url,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${accessJwt}`,
-            Accept:
-              "application/json",
-          },
-          cache: "no-store",
+          return (
+            matchesPlatform &&
+            matchesTopic &&
+            matchesSearch
+          );
         }
       );
+    }, [
+      items,
+      activePlatform,
+      activeTopic,
+      search,
+    ]);
 
-    const responseText =
-      await response.text();
+  const blueskyCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.platform ===
+            "Bluesky"
+        ).length,
+      [items]
+    );
 
-    if (!response.ok) {
-      console.error(
-        "Bluesky search failed",
-        query,
-        response.status,
-        responseText
-      );
+  const arabicCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.language
+              .toLowerCase()
+              .includes("ar")
+        ).length,
+      [items]
+    );
 
-      return [];
-    }
+  const securityCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.topic ===
+            "Security"
+        ).length,
+      [items]
+    );
 
-    const data =
-      JSON.parse(responseText);
+  const maritimeCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.topic ===
+            "Maritime"
+        ).length,
+      [items]
+    );
 
-    const posts =
-      data?.posts || [];
+  return (
+    <main>
+      <header className="topbar">
+        <div className="brandWrap">
+          <Image
+            src="/brand/basha-report-logo.png"
+            alt="Basha Report"
+            width={110}
+            height={104}
+            className="brandLogo"
+            priority
+          />
 
-    return posts.map(
-      (post: any) => {
-        const postText =
-          post?.record?.text || "";
+          <div className="brandDivider" />
 
-        const handle =
-          post?.author?.handle || "";
+          <div>
+            <div className="productName">
+              Yemen Monitor
+            </div>
 
-        const displayName =
-          post?.author?.displayName ||
-          handle ||
-          "Bluesky";
+            <div className="productSub">
+              Basha Report Intelligence
+            </div>
+          </div>
+        </div>
+      </header>
 
-        const langs =
-          post?.record?.langs;
+      <section className="liveFeedPage">
+        <Link
+          href="/"
+          className="backLink"
+        >
+          <ArrowLeft size={16} />
+          Back to overview
+        </Link>
 
-        return {
-          id:
-            post?.uri ||
-            crypto.randomUUID(),
+        <div className="liveFeedHeading">
+          <div>
+            <div className="eyebrow">
+              SOCIAL INTELLIGENCE
+            </div>
 
-          platform:
-            "Bluesky",
+            <h1>
+              Social Monitor
+            </h1>
 
-          account:
-            displayName,
+            <p>
+              Live public social
+              reporting related to
+              Yemen and the Red Sea.
+            </p>
+          </div>
 
-          handle:
-            handle
-              ? `@${handle}`
-              : "Bluesky",
+          <div className="feedSearch">
+            <Search size={17} />
 
-          text:
-            postText,
-
-          url:
-            handle &&
-            post?.uri
-              ? buildPostUrl(
-                  handle,
-                  post.uri
+            <input
+              type="text"
+              placeholder="Search posts or accounts"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
                 )
-              : "https://bsky.app/",
+              }
+            />
+          </div>
+        </div>
 
-          date:
-            post?.record?.createdAt ||
-            post?.indexedAt ||
-            new Date()
-              .toISOString(),
+        <div className="metricsGrid">
+          <SocialMetric
+            label="Live social posts"
+            value={String(
+              items.length
+            )}
+            detail="Current monitored results"
+          />
 
-          topic:
-            inferTopic(postText),
+          <SocialMetric
+            label="Bluesky"
+            value={String(
+              blueskyCount
+            )}
+            detail="Authenticated live feed"
+          />
 
-          language:
-            Array.isArray(langs) &&
-            langs.length > 0
-              ? langs.join(", ")
-              : "Unknown",
+          <SocialMetric
+            label="Security"
+            value={String(
+              securityCount
+            )}
+            detail="Social security reporting"
+          />
 
-          status:
-            "UNVERIFIED",
+          <SocialMetric
+            label="Maritime"
+            value={String(
+              maritimeCount
+            )}
+            detail="Red Sea reporting"
+          />
+        </div>
 
-          relevance:
-            relevanceScore(
-              postText
-            ),
-        };
-      }
-    );
-  } catch (error) {
-    console.error(
-      "Bluesky search error",
-      query,
-      error
-    );
+        <div className="card filterCard">
+          <div className="eyebrow">
+            PLATFORM
+          </div>
 
-    return [];
-  }
+          <div className="categoryFilters">
+            {platforms.map(
+              (platform) => (
+                <button
+                  key={
+                    platform
+                  }
+                  className={
+                    activePlatform ===
+                    platform
+                      ? "categoryButton activeCategoryButton"
+                      : "categoryButton"
+                  }
+                  onClick={() =>
+                    setActivePlatform(
+                      platform
+                    )
+                  }
+                >
+                  {platform}
+
+                  <span>
+                    {platform ===
+                    "All"
+                      ? items.length
+                      : platform ===
+                        "Bluesky"
+                      ? blueskyCount
+                      : 0}
+                  </span>
+                </button>
+              )
+            )}
+          </div>
+
+          <div
+            className="eyebrow"
+            style={{
+              marginTop: "18px",
+            }}
+          >
+            TOPIC
+          </div>
+
+          <div className="categoryFilters">
+            {topics.map(
+              (topic) => (
+                <button
+                  key={topic}
+                  className={
+                    activeTopic ===
+                    topic
+                      ? "categoryButton activeCategoryButton"
+                      : "categoryButton"
+                  }
+                  onClick={() =>
+                    setActiveTopic(
+                      topic
+                    )
+                  }
+                >
+                  {topic}
+
+                  <span>
+                    {topic === "All"
+                      ? items.length
+                      : items.filter(
+                          (item) =>
+                            item.topic ===
+                            topic
+                        ).length}
+                  </span>
+                </button>
+              )
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              alignItems:
+                "flex-start",
+            }}
+          >
+            <CircleAlert
+              size={18}
+            />
+
+            <div>
+              <div className="eyebrow">
+                VERIFICATION NOTICE
+              </div>
+
+              <p
+                style={{
+                  marginBottom: 0,
+                  lineHeight: 1.6,
+                }}
+              >
+                Social posts are
+                displayed as
+                unverified public
+                reporting. They
+                should not be treated
+                as confirmed facts
+                unless supported by
+                independent reporting.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="liveFeedResults"
+          style={{
+            marginTop: "14px",
+          }}
+        >
+          <div className="feedResultsHeader">
+            <span>
+              {filtered.length} posts
+            </span>
+
+            <span>
+              {arabicCount} Arabic
+              {" · "}
+              Reddit{" "}
+              {redditStatus}
+            </span>
+          </div>
+
+          {authenticatedAs && (
+            <div
+              className="feedResultsHeader"
+              style={{
+                textTransform:
+                  "none",
+              }}
+            >
+              <span>
+                Bluesky connected as{" "}
+                {authenticatedAs}
+              </span>
+
+              <span>
+                {updatedAt
+                  ? `Updated ${formatUpdateTime(
+                      updatedAt
+                    )}`
+                  : ""}
+              </span>
+            </div>
+          )}
+
+          {loading && (
+            <div className="liveFeedEmpty">
+              Loading social
+              reporting...
+            </div>
+          )}
+
+          {error && (
+            <div className="liveFeedEmpty">
+              Unable to load social
+              reporting.
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            filtered.length ===
+              0 && (
+              <div className="liveFeedEmpty">
+                No matching social
+                posts.
+              </div>
+            )}
+
+          {!loading &&
+            !error &&
+            filtered.map(
+              (item) => (
+                <article
+                  key={item.id}
+                  className="liveFeedRow"
+                >
+                  <div className="liveFeedTime">
+                    {formatTime(
+                      item.date
+                    )}
+                  </div>
+
+                  <div className="liveFeedBody">
+                    <div className="feedMeta">
+                      {item.platform}
+                      {" · "}
+                      {item.topic}
+                      {" · "}
+                      {item.language}
+                      {" · "}
+                      {item.status}
+                    </div>
+
+                    <div
+                      style={{
+                        marginBottom:
+                          "7px",
+                        color:
+                          "#75655e",
+                        fontSize:
+                          "11px",
+                      }}
+                    >
+                      {item.account}
+                      {" "}
+                      {item.handle}
+                    </div>
+
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="liveFeedTitle"
+                    >
+                      {item.text}
+                    </a>
+
+                    <div
+                      style={{
+                        marginTop:
+                          "9px",
+                      }}
+                    >
+                      <a
+                        href={
+                          item.url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="backLink"
+                        style={{
+                          marginBottom:
+                            0,
+                        }}
+                      >
+                        Open original
+                        post
+                        <ExternalLink
+                          size={13}
+                        />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div
+                    className="relevanceBadge"
+                    title="Relevance score"
+                  >
+                    {
+                      item.relevance
+                    }
+                  </div>
+                </article>
+              )
+            )}
+        </div>
+      </section>
+    </main>
+  );
 }
 
-export async function GET() {
-  try {
-    const session =
-      await createBlueskySession();
+function SocialMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="metricCard">
+      <div>
+        <div className="metricLabel">
+          {label}
+        </div>
 
-    const results =
-      await Promise.all(
-        searches.map(
-          (query) =>
-            searchBluesky(
-              query,
-              session.accessJwt
-            )
-        )
-      );
+        <div className="metricValue">
+          {value}
+        </div>
 
-    const combined =
-      results.flat();
+        <div className="metricDetail">
+          {detail}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-    const seen =
-      new Set<string>();
+function formatTime(
+  date: string
+) {
+  const parsed =
+    new Date(date);
 
-    const items =
-      combined
-        .filter((item) => {
-          if (
-            !item.text ||
-            !item.url
-          ) {
-            return false;
-          }
-
-          if (
-            seen.has(item.id)
-          ) {
-            return false;
-          }
-
-          if (
-            containsBlockedTerm(
-              item.text
-            )
-          ) {
-            return false;
-          }
-
-          if (
-            isLikelyFalseAdenMatch(
-              item.text
-            )
-          ) {
-            return false;
-          }
-
-          if (
-            !hasStrongYemenContext(
-              item.text
-            )
-          ) {
-            return false;
-          }
-
-          if (
-            item.relevance < 3
-          ) {
-            return false;
-          }
-
-          seen.add(item.id);
-
-          return true;
-        })
-        .sort((a, b) => {
-          const timeDifference =
-            new Date(
-              b.date
-            ).getTime() -
-            new Date(
-              a.date
-            ).getTime();
-
-          if (
-            Math.abs(
-              timeDifference
-            ) <
-            10 * 60 * 1000
-          ) {
-            return (
-              b.relevance -
-              a.relevance
-            );
-          }
-
-          return timeDifference;
-        })
-        .slice(0, 50);
-
-    const topicCounts =
-      items.reduce(
-        (
-          counts,
-          item
-        ) => {
-          counts[
-            item.topic
-          ] =
-            (
-              counts[
-                item.topic
-              ] || 0
-            ) + 1;
-
-          return counts;
-        },
-        {} as Record<
-          string,
-          number
-        >
-      );
-
-    const languageCounts =
-      items.reduce(
-        (
-          counts,
-          item
-        ) => {
-          counts[
-            item.language
-          ] =
-            (
-              counts[
-                item.language
-              ] || 0
-            ) + 1;
-
-          return counts;
-        },
-        {} as Record<
-          string,
-          number
-        >
-      );
-
-    return NextResponse.json({
-      ok: true,
-
-      updatedAt:
-        new Date()
-          .toISOString(),
-
-      authenticatedAs:
-        session.handle,
-
-      count:
-        items.length,
-
-      providers: {
-        bluesky:
-          items.length,
-        reddit: 0,
-      },
-
-      redditStatus:
-        "Awaiting API approval",
-
-      topicCounts,
-
-      languageCounts,
-
-      items,
-    });
-  } catch (error) {
-    console.error(
-      "Social API error",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unable to load social content",
-        items: [],
-      },
-      {
-        status: 200,
-      }
-    );
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
   }
+
+  return parsed.toLocaleString(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  );
+}
+
+function formatUpdateTime(
+  date: string
+) {
+  const parsed =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  );
 }
