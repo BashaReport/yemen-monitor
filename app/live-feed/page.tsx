@@ -21,11 +21,15 @@ type Article = {
   source: string;
   category: string;
   relevance: number;
+  provider?: string;
 };
 
 type NewsResponse = {
   updatedAt: string;
   count: number;
+  googleCount?: number;
+  reliefWebCount?: number;
+  reliefWebFetched?: number;
   articles: Article[];
 };
 
@@ -58,21 +62,38 @@ const timeOptions = [
   },
 ];
 
+const providerOptions = [
+  "All",
+  "Google News",
+  "ReliefWeb",
+];
+
 export default function LiveFeedPage() {
   const [articles, setArticles] =
     useState<Article[]>([]);
 
-  const [activeCategory, setActiveCategory] =
-    useState("All");
+  const [
+    activeCategory,
+    setActiveCategory,
+  ] = useState("All");
 
   const [search, setSearch] =
     useState("");
 
-  const [selectedSource, setSelectedSource] =
-    useState("All");
+  const [
+    selectedSource,
+    setSelectedSource,
+  ] = useState("All");
 
-  const [selectedHours, setSelectedHours] =
-    useState(24);
+  const [
+    selectedProvider,
+    setSelectedProvider,
+  ] = useState("All");
+
+  const [
+    selectedHours,
+    setSelectedHours,
+  ] = useState(24);
 
   const [loading, setLoading] =
     useState(true);
@@ -121,20 +142,23 @@ export default function LiveFeedPage() {
       );
 
     return () =>
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
   }, []);
 
   const sources = useMemo(() => {
-    const unique = Array.from(
-      new Set(
-        articles
-          .map(
-            (article) =>
-              article.source
-          )
-          .filter(Boolean)
-      )
-    );
+    const unique =
+      Array.from(
+        new Set(
+          articles
+            .map(
+              (article) =>
+                article.source
+            )
+            .filter(Boolean)
+        )
+      );
 
     return unique.sort(
       (a, b) =>
@@ -142,71 +166,98 @@ export default function LiveFeedPage() {
     );
   }, [articles]);
 
-  const filtered = useMemo(() => {
-    const cutoff =
-      Date.now() -
-      selectedHours *
-        60 *
-        60 *
-        1000;
+  const filtered =
+    useMemo(() => {
+      const cutoff =
+        Date.now() -
+        selectedHours *
+          60 *
+          60 *
+          1000;
 
-    const query =
-      search
-        .toLowerCase()
-        .trim();
+      const query =
+        search
+          .toLowerCase()
+          .trim();
 
-    return articles.filter(
-      (article) => {
-        const articleTime =
-          new Date(
-            article.date
-          ).getTime();
+      return articles.filter(
+        (article) => {
+          const articleTime =
+            new Date(
+              article.date
+            ).getTime();
 
-        const matchesTime =
-          !Number.isNaN(
-            articleTime
-          ) &&
-          articleTime >= cutoff;
+          const matchesTime =
+            !Number.isNaN(
+              articleTime
+            ) &&
+            articleTime >=
+              cutoff;
 
-        const matchesCategory =
-          activeCategory ===
-            "All" ||
-          article.category ===
-            activeCategory;
+          const matchesCategory =
+            activeCategory ===
+              "All" ||
+            article.category ===
+              activeCategory;
 
-        const matchesSource =
-          selectedSource ===
-            "All" ||
-          article.source ===
-            selectedSource;
+          const matchesSource =
+            selectedSource ===
+              "All" ||
+            article.source ===
+              selectedSource;
 
-        const matchesSearch =
-          !query ||
-          article.title
-            .toLowerCase()
-            .includes(query) ||
-          article.source
-            .toLowerCase()
-            .includes(query) ||
-          article.category
-            .toLowerCase()
-            .includes(query);
+          const matchesProvider =
+            selectedProvider ===
+              "All" ||
+            article.provider ===
+              selectedProvider;
 
-        return (
-          matchesTime &&
-          matchesCategory &&
-          matchesSource &&
-          matchesSearch
-        );
-      }
+          const matchesSearch =
+            !query ||
+            article.title
+              .toLowerCase()
+              .includes(query) ||
+            article.source
+              .toLowerCase()
+              .includes(query) ||
+            article.category
+              .toLowerCase()
+              .includes(query) ||
+            (
+              article.provider ||
+              ""
+            )
+              .toLowerCase()
+              .includes(query);
+
+          return (
+            matchesTime &&
+            matchesCategory &&
+            matchesSource &&
+            matchesProvider &&
+            matchesSearch
+          );
+        }
+      );
+    }, [
+      articles,
+      activeCategory,
+      selectedSource,
+      selectedProvider,
+      selectedHours,
+      search,
+    ]);
+
+  const reliefWebVisible =
+    useMemo(
+      () =>
+        filtered.filter(
+          (article) =>
+            article.provider ===
+            "ReliefWeb"
+        ).length,
+      [filtered]
     );
-  }, [
-    articles,
-    activeCategory,
-    selectedSource,
-    selectedHours,
-    search,
-  ]);
 
   return (
     <main>
@@ -250,7 +301,9 @@ export default function LiveFeedPage() {
               LIVE MONITORING
             </div>
 
-            <h1>Live Feed</h1>
+            <h1>
+              Live Feed
+            </h1>
 
             <p>
               Current reporting on
@@ -315,6 +368,50 @@ export default function LiveFeedPage() {
           <div className="secondaryFilters">
             <label className="selectWrap">
               <span>
+                Provider
+              </span>
+
+              <div className="selectBox">
+                <select
+                  value={
+                    selectedProvider
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setSelectedProvider(
+                      event.target
+                        .value
+                    )
+                  }
+                >
+                  {providerOptions.map(
+                    (provider) => (
+                      <option
+                        key={
+                          provider
+                        }
+                        value={
+                          provider
+                        }
+                      >
+                        {provider ===
+                        "All"
+                          ? "All providers"
+                          : provider}
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <ChevronDown
+                  size={14}
+                />
+              </div>
+            </label>
+
+            <label className="selectWrap">
+              <span>
                 Source
               </span>
 
@@ -373,17 +470,14 @@ export default function LiveFeedPage() {
                   ) =>
                     setSelectedHours(
                       Number(
-                        event
-                          .target
+                        event.target
                           .value
                       )
                     )
                   }
                 >
                   {timeOptions.map(
-                    (
-                      option
-                    ) => (
+                    (option) => (
                       <option
                         key={
                           option.hours
@@ -416,6 +510,9 @@ export default function LiveFeedPage() {
             </span>
 
             <span>
+              {reliefWebVisible > 0
+                ? `${reliefWebVisible} direct ReliefWeb · `
+                : ""}
               Last {selectedHours}h
             </span>
           </div>
@@ -461,10 +558,22 @@ export default function LiveFeedPage() {
                       {
                         article.category
                       }
+
                       {" · "}
+
                       {
                         article.source
                       }
+
+                      {article.provider ===
+                        "ReliefWeb" && (
+                        <>
+                          {" · "}
+                          <span className="reliefWebLabel">
+                            DIRECT RELIEFWEB
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     <a
@@ -481,7 +590,10 @@ export default function LiveFeedPage() {
                     </a>
                   </div>
 
-                  <div className="relevanceBadge">
+                  <div
+                    className="relevanceBadge"
+                    title="Relevance score"
+                  >
                     {
                       article.relevance
                     }
