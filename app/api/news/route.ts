@@ -6,7 +6,12 @@ type NewsItem = {
   pubDate: string;
   source: string;
   category: string;
+  relevance: number;
+  provider: string;
 };
+
+const RELIEFWEB_URL =
+  "https://api.reliefweb.int/v2/reports?appname=BashaReport-YemenMonitor-7Fr389x3K";
 
 const searches = [
   {
@@ -114,7 +119,10 @@ function normalizeTitle(title: string) {
   return cleanTitle(title)
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\b(the|a|an|of|in|on|to|for|and|with|as|at)\b/g, "")
+    .replace(
+      /\b(the|a|an|of|in|on|to|for|and|with|as|at|say|says|claim|claims|report|reports)\b/g,
+      ""
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -150,6 +158,10 @@ function relevanceScore(title: string) {
     text.includes("shipping") ||
     text.includes("port") ||
     text.includes("detention") ||
+    text.includes("displacement") ||
+    text.includes("food") ||
+    text.includes("health") ||
+    text.includes("water") ||
     text.includes("negotiation")
   ) {
     score += 1;
@@ -178,23 +190,17 @@ function inferCategory(
   }
 
   if (
-    text.includes("missile") ||
-    text.includes("drone") ||
-    text.includes("attack") ||
-    text.includes("strike") ||
-    text.includes("military") ||
-    text.includes("houthi")
-  ) {
-    return "Security";
-  }
-
-  if (
     text.includes("humanitarian") ||
     text.includes("unicef") ||
     text.includes("aid") ||
     text.includes("food") ||
     text.includes("famine") ||
-    text.includes("relief")
+    text.includes("relief") ||
+    text.includes("displacement") ||
+    text.includes("wash") ||
+    text.includes("health") ||
+    text.includes("immunization") ||
+    text.includes("protection")
   ) {
     return "Humanitarian";
   }
@@ -219,10 +225,21 @@ function inferCategory(
     return "Politics";
   }
 
+  if (
+    text.includes("missile") ||
+    text.includes("drone") ||
+    text.includes("attack") ||
+    text.includes("strike") ||
+    text.includes("military") ||
+    text.includes("houthi")
+  ) {
+    return "Security";
+  }
+
   return fallback;
 }
 
-function parseFeed(
+function parseGoogleFeed(
   xml: string,
   category: string
 ): NewsItem[] {
@@ -235,7 +252,8 @@ function parseFeed(
 
     if (!source && title.includes(" - ")) {
       const parts = title.split(" - ");
-      source = parts.pop() || "Google News";
+      source =
+        parts.pop() || "Google News";
       title = parts.join(" - ");
     }
 
@@ -244,17 +262,24 @@ function parseFeed(
     return {
       title,
       link: getTag(item, "link"),
-      pubDate: getTag(item, "pubDate"),
-      source: source || "Google News",
+      pubDate: getTag(
+        item,
+        "pubDate"
+      ),
+      source:
+        source || "Google News",
       category: inferCategory(
         title,
         category
       ),
+      relevance:
+        relevanceScore(title),
+      provider: "Google News",
     };
   });
 }
 
-async function fetchSearch(
+async function fetchGoogleSearch(
   query: string,
   category: string
 ): Promise<NewsItem[]> {
@@ -264,15 +289,18 @@ async function fetchSearch(
     "&hl=en-US&gl=US&ceid=US:en";
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 BashaReport YemenMonitor",
-      },
-      next: {
-        revalidate: 300,
-      },
-    });
+    const response = await fetch(
+      url,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 BashaReport YemenMonitor",
+        },
+        next: {
+          revalidate: 300,
+        },
+      }
+    );
 
     if (!response.ok) {
       console.error(
@@ -284,9 +312,10 @@ async function fetchSearch(
       return [];
     }
 
-    const xml = await response.text();
+    const xml =
+      await response.text();
 
-    return parseFeed(
+    return parseGoogleFeed(
       xml,
       category
     );
@@ -301,38 +330,163 @@ async function fetchSearch(
   }
 }
 
-export async function GET() {
+async function fetchReliefWeb(): Promise<NewsItem[]> {
   try {
-    const results = await Promise.all(
-      searches.map((search) =>
-        fetchSearch(
-          search.query,
-          search.category
-        )
-      )
+    const response = await fetch(
+      RELIEFWEB_URL,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          preset: "latest",
+          limit: 30,
+          filter: {
+            field: "country",
+            value: "Yemen",
+          },
+          fields: {
+            include: [
+              "title",
+              "date.created",
+              "source.name",
+              "url",
+              "url_alias",
+            ],
+          },
+        }),
+        next: {
+          revalidate: 300,
+        },
+      }
     );
 
-    const combined = results.flat();
+    if (!response.ok) {
+      console.error(
+        "ReliefWeb request failed",
+        response.status
+      );
 
-    const seen = new Set<string>();
+      return [];
+    }
+
+    const data =
+      await response.json();
+
+    const items =
+      data?.data || [];
+
+    return items
+      .map((item: any) => {
+        const title =
+          item.fields?.title ||
+          "Untitled report";
+
+        const url =
+          item.fields?.url_alias ||
+          item.fields?.url ||
+          item.href ||
+          "";
+
+        const source =
+          item.fields?.source?.[0]
+            ?.name ||
+          "ReliefWeb";
+
+        return {
+          title,
+          link: url,
+          pubDate:
+            item.fields?.date
+              ?.created || "",
+          source,
+          category:
+            "Humanitarian",
+          relevance: Math.max(
+            relevanceScore(title),
+            6
+          ),
+          provider:
+            "ReliefWeb",
+        };
+      })
+      .filter(
+        (article: NewsItem) => {
+          const title =
+            article.title.toLowerCase();
+
+          const url =
+            article.link.toLowerCase();
+
+          return (
+            url.includes(
+              "/report/yemen/"
+            ) ||
+            title.includes("yemen") ||
+            title.includes("yemeni")
+          );
+        }
+      );
+  } catch (error) {
+    console.error(
+      "ReliefWeb fetch error",
+      error
+    );
+
+    return [];
+  }
+}
+
+export async function GET() {
+  try {
+    const [
+      googleResults,
+      reliefWebResults,
+    ] = await Promise.all([
+      Promise.all(
+        searches.map(
+          (search) =>
+            fetchGoogleSearch(
+              search.query,
+              search.category
+            )
+        )
+      ),
+      fetchReliefWeb(),
+    ]);
+
+    const googleArticles =
+      googleResults.flat();
+
+    const combined = [
+      ...googleArticles,
+      ...reliefWebResults,
+    ];
+
+    const seen =
+      new Set<string>();
 
     const articles = combined
-      .map((article) => ({
-        ...article,
-        score: relevanceScore(
-          article.title
-        ),
-      }))
       .filter((article) => {
-        if (article.score < 3) {
+        if (
+          article.provider ===
+            "Google News" &&
+          article.relevance < 3
+        ) {
           return false;
         }
 
-        const key = normalizeTitle(
-          article.title
-        );
+        const key =
+          normalizeTitle(
+            article.title
+          );
 
-        if (!key || seen.has(key)) {
+        if (
+          !key ||
+          seen.has(key)
+        ) {
           return false;
         }
 
@@ -342,42 +496,74 @@ export async function GET() {
       })
       .sort((a, b) => {
         const timeA =
-          new Date(a.pubDate).getTime() || 0;
+          new Date(
+            a.pubDate
+          ).getTime() || 0;
 
         const timeB =
-          new Date(b.pubDate).getTime() || 0;
+          new Date(
+            b.pubDate
+          ).getTime() || 0;
 
-        if (timeB !== timeA) {
-          return timeB - timeA;
-        }
-
-        return b.score - a.score;
+        return timeB - timeA;
       })
-      .slice(0, 40)
-      .map((article, index) => ({
-        id: index + 1,
-        title: article.title,
-        url: article.link,
-        date: article.pubDate,
-        source: article.source,
-        category: article.category,
-        relevance: article.score,
-      }));
+      .slice(0, 70)
+      .map(
+        (
+          article,
+          index
+        ) => ({
+          id: index + 1,
+          title:
+            article.title,
+          url:
+            article.link,
+          date:
+            article.pubDate,
+          source:
+            article.source,
+          category:
+            article.category,
+          relevance:
+            article.relevance,
+          provider:
+            article.provider,
+        })
+      );
+
+    const googleCount =
+      articles.filter(
+        (article) =>
+          article.provider ===
+          "Google News"
+      ).length;
+
+    const reliefWebCount =
+      articles.filter(
+        (article) =>
+          article.provider ===
+          "ReliefWeb"
+      ).length;
 
     return NextResponse.json({
-      updatedAt: new Date().toISOString(),
-      count: articles.length,
+      updatedAt:
+        new Date().toISOString(),
+      count:
+        articles.length,
+      googleCount,
+      reliefWebCount,
       articles,
     });
   } catch (error) {
     console.error(
-      "Yemen Google News API error",
+      "Yemen Monitor API error",
       error
     );
 
     return NextResponse.json(
       {
-        error: "Unable to load Yemen news",
+        error:
+          "Unable to load Yemen reporting",
         articles: [],
       },
       {
