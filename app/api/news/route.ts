@@ -7,7 +7,7 @@ type NewsItem = {
   source: string;
   category: string;
   relevance: number;
-  provider: string;
+  provider: "Google News" | "ReliefWeb";
 };
 
 const RELIEFWEB_URL =
@@ -303,12 +303,6 @@ async function fetchGoogleSearch(
     );
 
     if (!response.ok) {
-      console.error(
-        "Google News request failed",
-        response.status,
-        query
-      );
-
       return [];
     }
 
@@ -319,13 +313,7 @@ async function fetchGoogleSearch(
       xml,
       category
     );
-  } catch (error) {
-    console.error(
-      "Google News fetch error",
-      query,
-      error
-    );
-
+  } catch {
     return [];
   }
 }
@@ -378,8 +366,8 @@ async function fetchReliefWeb(): Promise<NewsItem[]> {
     const items =
       data?.data || [];
 
-    return items
-      .map((item: any) => {
+    return items.map(
+      (item: any) => {
         const title =
           item.fields?.title ||
           "Untitled report";
@@ -409,26 +397,10 @@ async function fetchReliefWeb(): Promise<NewsItem[]> {
             6
           ),
           provider:
-            "ReliefWeb",
+            "ReliefWeb" as const,
         };
-      })
-      .filter(
-        (article: NewsItem) => {
-          const title =
-            article.title.toLowerCase();
-
-          const url =
-            article.link.toLowerCase();
-
-          return (
-            url.includes(
-              "/report/yemen/"
-            ) ||
-            title.includes("yemen") ||
-            title.includes("yemeni")
-          );
-        }
-      );
+      }
+    );
   } catch (error) {
     console.error(
       "ReliefWeb fetch error",
@@ -458,42 +430,60 @@ export async function GET() {
     ]);
 
     const googleArticles =
-      googleResults.flat();
+      googleResults
+        .flat()
+        .filter(
+          (article) =>
+            article.relevance >= 3
+        );
 
-    const combined = [
-      ...googleArticles,
+    const preferred = [
       ...reliefWebResults,
+      ...googleArticles,
     ];
 
     const seen =
       new Set<string>();
 
-    const articles = combined
-      .filter((article) => {
-        if (
+    const deduped =
+      preferred.filter(
+        (article) => {
+          const key =
+            normalizeTitle(
+              article.title
+            );
+
+          if (
+            !key ||
+            seen.has(key)
+          ) {
+            return false;
+          }
+
+          seen.add(key);
+
+          return true;
+        }
+      );
+
+    const reliefWebArticles =
+      deduped.filter(
+        (article) =>
           article.provider ===
-            "Google News" &&
-          article.relevance < 3
-        ) {
-          return false;
-        }
+          "ReliefWeb"
+      );
 
-        const key =
-          normalizeTitle(
-            article.title
-          );
+    const googleOnlyArticles =
+      deduped.filter(
+        (article) =>
+          article.provider ===
+          "Google News"
+      );
 
-        if (
-          !key ||
-          seen.has(key)
-        ) {
-          return false;
-        }
-
-        seen.add(key);
-
-        return true;
-      })
+    const selected = [
+      ...reliefWebArticles,
+      ...googleOnlyArticles,
+    ]
       .sort((a, b) => {
         const timeA =
           new Date(
@@ -507,8 +497,10 @@ export async function GET() {
 
         return timeB - timeA;
       })
-      .slice(0, 70)
-      .map(
+      .slice(0, 70);
+
+    const articles =
+      selected.map(
         (
           article,
           index
@@ -531,18 +523,18 @@ export async function GET() {
         })
       );
 
-    const googleCount =
-      articles.filter(
-        (article) =>
-          article.provider ===
-          "Google News"
-      ).length;
-
     const reliefWebCount =
       articles.filter(
         (article) =>
           article.provider ===
           "ReliefWeb"
+      ).length;
+
+    const googleCount =
+      articles.filter(
+        (article) =>
+          article.provider ===
+          "Google News"
       ).length;
 
     return NextResponse.json({
@@ -552,6 +544,8 @@ export async function GET() {
         articles.length,
       googleCount,
       reliefWebCount,
+      reliefWebFetched:
+        reliefWebResults.length,
       articles,
     });
   } catch (error) {
