@@ -61,11 +61,14 @@ type SocialResponse = {
   ok: boolean;
   updatedAt?: string;
   count?: number;
+
   providers?: {
     bluesky?: number;
     reddit?: number;
   };
+
   redditStatus?: string;
+
   items?: SocialItem[];
 };
 
@@ -372,8 +375,11 @@ export default function Home() {
       12
     );
 
-  const latestSocial =
-    socialItems[0];
+  const latestSocialItems =
+    socialItems.slice(
+      0,
+      4
+    );
 
   const formattedUpdate =
     updatedAt
@@ -634,14 +640,10 @@ export default function Home() {
             "0 38px 14px",
         }}
       >
-        <Link
-          href="/social"
+        <div
           className="card"
           style={{
-            display: "block",
             padding: "20px",
-            textDecoration: "none",
-            color: "inherit",
           }}
         >
           <div
@@ -651,7 +653,7 @@ export default function Home() {
                 "space-between",
               alignItems:
                 "flex-start",
-              gap: "20px",
+              gap: "24px",
             }}
           >
             <div
@@ -660,6 +662,7 @@ export default function Home() {
                 gap: "15px",
                 alignItems:
                   "flex-start",
+                flex: 1,
               }}
             >
               <div className="metricIcon">
@@ -668,7 +671,11 @@ export default function Home() {
                 />
               </div>
 
-              <div>
+              <div
+                style={{
+                  flex: 1,
+                }}
+              >
                 <div className="eyebrow">
                   LIVE SOCIAL MONITORING
                 </div>
@@ -676,70 +683,173 @@ export default function Home() {
                 <h2
                   style={{
                     marginBottom:
-                      "7px",
+                      "12px",
                   }}
                 >
                   Social Monitor
                 </h2>
 
-                <p
-                  style={{
-                    marginBottom: 0,
-                    maxWidth:
-                      "760px",
-                    color:
-                      "#6c5a54",
-                    fontSize:
-                      "13px",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {socialLoading
-                    ? "Loading public social reporting..."
-                    : latestSocial
-                    ? latestSocial.text
-                    : "Monitor public Yemen and Red Sea reporting across connected social platforms."}
-                </p>
-
-                {latestSocial && (
-                  <div
+                {socialLoading && (
+                  <p
                     style={{
-                      marginTop:
-                        "10px",
+                      marginBottom: 0,
                       color:
-                        "#a86604",
+                        "#6c5a54",
                       fontSize:
-                        "10px",
-                      fontWeight:
-                        700,
-                      letterSpacing:
-                        "0.7px",
-                      textTransform:
-                        "uppercase",
+                        "13px",
                     }}
                   >
-                    {
-                      latestSocial.platform
-                    }
-                    {" · "}
-                    {
-                      latestSocial.topic
-                    }
-                    {" · "}
-                    {
-                      latestSocial.status
-                    }
-                  </div>
+                    Loading public
+                    social reporting...
+                  </p>
                 )}
+
+                {!socialLoading &&
+                  latestSocialItems.length ===
+                    0 && (
+                    <p
+                      style={{
+                        marginBottom:
+                          0,
+                        color:
+                          "#6c5a54",
+                        fontSize:
+                          "13px",
+                      }}
+                    >
+                      No social
+                      reporting is
+                      available right
+                      now.
+                    </p>
+                  )}
+
+                {!socialLoading &&
+                  latestSocialItems.length >
+                    0 && (
+                    <div>
+                      {latestSocialItems.map(
+                        (
+                          item,
+                          index
+                        ) => (
+                          <Link
+                            key={
+                              item.id
+                            }
+                            href="/social"
+                            style={{
+                              display:
+                                "grid",
+                              gridTemplateColumns:
+                                "66px 1fr",
+                              gap:
+                                "12px",
+                              padding:
+                                index ===
+                                0
+                                  ? "0 0 11px"
+                                  : "11px 0",
+                              borderTop:
+                                index ===
+                                0
+                                  ? "0"
+                                  : "1px solid rgba(50, 3, 3, 0.09)",
+                              textDecoration:
+                                "none",
+                              color:
+                                "inherit",
+                            }}
+                          >
+                            <div
+                              style={{
+                                color:
+                                  "#806e67",
+                                fontSize:
+                                  "10px",
+                                paddingTop:
+                                  "2px",
+                              }}
+                            >
+                              {formatSocialTime(
+                                item.date
+                              )}
+                            </div>
+
+                            <div>
+                              <div
+                                style={{
+                                  color:
+                                    "#a86604",
+                                  fontSize:
+                                    "9px",
+                                  fontWeight:
+                                    800,
+                                  letterSpacing:
+                                    "0.7px",
+                                  textTransform:
+                                    "uppercase",
+                                  marginBottom:
+                                    "4px",
+                                }}
+                              >
+                                {
+                                  item.platform
+                                }
+                                {" · "}
+                                {
+                                  item.topic
+                                }
+                                {" · "}
+                                {
+                                  item.account
+                                }
+                              </div>
+
+                              <div
+                                style={{
+                                  color:
+                                    "#3c2522",
+                                  fontFamily:
+                                    "Georgia, serif",
+                                  fontSize:
+                                    "14px",
+                                  lineHeight:
+                                    1.4,
+                                  display:
+                                    "-webkit-box",
+                                  WebkitLineClamp:
+                                    1,
+                                  WebkitBoxOrient:
+                                    "vertical",
+                                  overflow:
+                                    "hidden",
+                                }}
+                              >
+                                {
+                                  item.text
+                                }
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
 
-            <div
+            <Link
+              href="/social"
               style={{
                 minWidth:
                   "150px",
                 textAlign:
                   "right",
+                textDecoration:
+                  "none",
+                color:
+                  "inherit",
               }}
             >
               <div
@@ -794,9 +904,9 @@ export default function Home() {
                   size={13}
                 />
               </div>
-            </div>
+            </Link>
           </div>
-        </Link>
+        </div>
       </section>
 
       <section className="card filterCard">
@@ -1061,6 +1171,33 @@ function Metric({
 }
 
 function formatArticleTime(
+  date: string
+) {
+  if (!date) {
+    return "";
+  }
+
+  const parsed =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  );
+}
+
+function formatSocialTime(
   date: string
 ) {
   if (!date) {
