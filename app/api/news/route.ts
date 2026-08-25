@@ -62,7 +62,14 @@ const strongTerms = [
   "marib",
   "taiz",
   "mukalla",
+  "hadramout",
+  "shabwa",
   "socotra",
+  "hajjah",
+  "saada",
+  "lahj",
+  "abyan",
+  "al jawf",
   "bab al-mandab",
   "bab el-mandeb",
   "red sea",
@@ -74,16 +81,53 @@ const blockedTerms = [
   "soccer",
   "cricket",
   "basketball",
+  "volleyball",
+  "tennis",
+  "fifa",
+  "afc",
   "asian cup",
   "world cup",
+  "champions league",
+  "premier league",
+  "live score",
+  "livescore",
+  "h2h",
+  "lineups",
+  "lineup",
+  "fixture",
+  "fixtures",
+  "match preview",
+  "kickoff",
+  "kick-off",
   "u20",
   "u-20",
+  "u17",
+  "u-17",
   "coffeehouse",
   "coffee shop",
   "restaurant",
   "recipe",
   "tourism",
   "travel guide",
+  "hotel",
+  "resort",
+  "vacation",
+  "holiday package",
+  "fashion",
+  "celebrity",
+  "movie",
+  "film review",
+  "music video",
+  "gaming",
+];
+
+const weakOnlyTerms = [
+  "yemen coffee",
+  "mocha coffee",
+  "yemeni coffee",
+  "yemen restaurant",
+  "yemen travel",
+  "yemen tourism",
 ];
 
 function decodeXml(value: string) {
@@ -127,14 +171,38 @@ function normalizeTitle(title: string) {
     .trim();
 }
 
+function containsBlockedTerm(title: string) {
+  const text = title.toLowerCase();
+
+  return blockedTerms.some((term) =>
+    text.includes(term)
+  );
+}
+
+function hasStrongYemenContext(title: string) {
+  const text = title.toLowerCase();
+
+  return strongTerms.some((term) =>
+    text.includes(term)
+  );
+}
+
+function isWeakLifestyleMatch(title: string) {
+  const text = title.toLowerCase();
+
+  return weakOnlyTerms.some((term) =>
+    text.includes(term)
+  );
+}
+
 function relevanceScore(title: string) {
   const text = title.toLowerCase();
 
-  if (
-    blockedTerms.some((term) =>
-      text.includes(term)
-    )
-  ) {
+  if (containsBlockedTerm(title)) {
+    return -100;
+  }
+
+  if (isWeakLifestyleMatch(title)) {
     return -100;
   }
 
@@ -162,7 +230,14 @@ function relevanceScore(title: string) {
     text.includes("food") ||
     text.includes("health") ||
     text.includes("water") ||
-    text.includes("negotiation")
+    text.includes("negotiation") ||
+    text.includes("clash") ||
+    text.includes("shelling") ||
+    text.includes("military") ||
+    text.includes("sanctions") ||
+    text.includes("blockade") ||
+    text.includes("mine") ||
+    text.includes("explosive")
   ) {
     score += 1;
   }
@@ -184,7 +259,9 @@ function inferCategory(
     text.includes("bab el-mandeb") ||
     text.includes("gulf of aden") ||
     text.includes("maritime") ||
-    text.includes("vessel")
+    text.includes("vessel") ||
+    text.includes("seafarer") ||
+    text.includes("shipping")
   ) {
     return "Maritime";
   }
@@ -200,17 +277,24 @@ function inferCategory(
     text.includes("wash") ||
     text.includes("health") ||
     text.includes("immunization") ||
-    text.includes("protection")
+    text.includes("protection") ||
+    text.includes("wfp") ||
+    text.includes("ocha") ||
+    text.includes("iom")
   ) {
     return "Humanitarian";
   }
 
   if (
     text.includes("economy") ||
+    text.includes("economic") ||
     text.includes("currency") ||
     text.includes("rial") ||
     text.includes("oil price") ||
-    text.includes("inflation")
+    text.includes("inflation") ||
+    text.includes("bank") ||
+    text.includes("salary") ||
+    text.includes("trade")
   ) {
     return "Economy";
   }
@@ -220,7 +304,11 @@ function inferCategory(
     text.includes("talks") ||
     text.includes("ceasefire") ||
     text.includes("negotiation") ||
-    text.includes("political")
+    text.includes("political") ||
+    text.includes("minister") ||
+    text.includes("president") ||
+    text.includes("ambassador") ||
+    text.includes("diplomat")
   ) {
     return "Politics";
   }
@@ -231,7 +319,10 @@ function inferCategory(
     text.includes("attack") ||
     text.includes("strike") ||
     text.includes("military") ||
-    text.includes("houthi")
+    text.includes("houthi") ||
+    text.includes("shelling") ||
+    text.includes("clash") ||
+    text.includes("explosive")
   ) {
     return "Security";
   }
@@ -432,10 +523,31 @@ export async function GET() {
     const googleArticles =
       googleResults
         .flat()
-        .filter(
-          (article) =>
-            article.relevance >= 3
-        );
+        .filter((article) => {
+          if (
+            article.relevance < 3
+          ) {
+            return false;
+          }
+
+          if (
+            containsBlockedTerm(
+              article.title
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            !hasStrongYemenContext(
+              article.title
+            )
+          ) {
+            return false;
+          }
+
+          return true;
+        });
 
     const preferred = [
       ...reliefWebResults,
@@ -466,38 +578,22 @@ export async function GET() {
         }
       );
 
-    const reliefWebArticles =
-      deduped.filter(
-        (article) =>
-          article.provider ===
-          "ReliefWeb"
-      );
+    const selected =
+      deduped
+        .sort((a, b) => {
+          const timeA =
+            new Date(
+              a.pubDate
+            ).getTime() || 0;
 
-    const googleOnlyArticles =
-      deduped.filter(
-        (article) =>
-          article.provider ===
-          "Google News"
-      );
+          const timeB =
+            new Date(
+              b.pubDate
+            ).getTime() || 0;
 
-    const selected = [
-      ...reliefWebArticles,
-      ...googleOnlyArticles,
-    ]
-      .sort((a, b) => {
-        const timeA =
-          new Date(
-            a.pubDate
-          ).getTime() || 0;
-
-        const timeB =
-          new Date(
-            b.pubDate
-          ).getTime() || 0;
-
-        return timeB - timeA;
-      })
-      .slice(0, 70);
+          return timeB - timeA;
+        })
+        .slice(0, 70);
 
     const articles =
       selected.map(
