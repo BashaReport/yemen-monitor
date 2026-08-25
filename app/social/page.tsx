@@ -4,200 +4,271 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  BadgeCheck,
   CircleAlert,
-  Filter,
+  ExternalLink,
   Search,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 type SocialItem = {
-  id: number;
+  id: string;
   platform: string;
   account: string;
   handle: string;
-  language: string;
-  status: string;
-  topic: string;
   text: string;
   url: string;
+  date: string;
+  topic: string;
+  language: string;
+  status: string;
+  relevance: number;
 };
 
-const socialItems: SocialItem[] = [
-  {
-    id: 1,
-    platform: "X",
-    account: "Example Yemen Source",
-    handle: "@example",
-    language: "English",
-    status: "Planned",
-    topic: "Security",
-    text: "X monitoring will appear here once API access is connected.",
-    url: "https://x.com/",
-  },
-  {
-    id: 2,
-    platform: "Reddit",
-    account: "Yemen discussions",
-    handle: "r/Yemen",
-    language: "English",
-    status: "Planned",
-    topic: "General",
-    text: "Public Reddit discussions related to Yemen will appear here.",
-    url: "https://www.reddit.com/",
-  },
-  {
-    id: 3,
-    platform: "Bluesky",
-    account: "Yemen keyword monitor",
-    handle: "Bluesky",
-    language: "English",
-    status: "Planned",
-    topic: "General",
-    text: "Public Bluesky posts matching Yemen-related terms will appear here.",
-    url: "https://bsky.app/",
-  },
-  {
-    id: 4,
-    platform: "YouTube",
-    account: "Yemen video monitor",
-    handle: "YouTube",
-    language: "English + Arabic",
-    status: "Planned",
-    topic: "Media",
-    text: "Recent Yemen-related videos and official channel uploads will appear here.",
-    url: "https://www.youtube.com/",
-  },
-  {
-    id: 5,
-    platform: "Telegram",
-    account: "Public channel monitor",
-    handle: "Telegram",
-    language: "English + Arabic",
-    status: "Planned",
-    topic: "Security",
-    text: "Approved public Telegram channels can be monitored here later.",
-    url: "https://telegram.org/",
-  },
-  {
-    id: 6,
-    platform: "Facebook",
-    account: "Public page monitor",
-    handle: "Facebook",
-    language: "English + Arabic",
-    status: "Planned",
-    topic: "General",
-    text: "Public Facebook pages and approved integrations will appear here.",
-    url: "https://www.facebook.com/",
-  },
-  {
-    id: 7,
-    platform: "Instagram",
-    account: "Public account monitor",
-    handle: "Instagram",
-    language: "English + Arabic",
-    status: "Planned",
-    topic: "Media",
-    text: "Public Instagram posts can be added when approved access is available.",
-    url: "https://www.instagram.com/",
-  },
-  {
-    id: 8,
-    platform: "Truth Social",
-    account: "Yemen keyword monitor",
-    handle: "Truth Social",
-    language: "English",
-    status: "Planned",
-    topic: "Politics",
-    text: "Public Yemen-related Truth Social activity will appear here if reliable access is available.",
-    url: "https://truthsocial.com/",
-  },
-  {
-    id: 9,
-    platform: "Substack",
-    account: "Yemen newsletter monitor",
-    handle: "Substack",
-    language: "English",
-    status: "Planned",
-    topic: "Analysis",
-    text: "Yemen-related newsletters and analyst posts will appear here.",
-    url: "https://substack.com/",
-  },
-  {
-    id: 10,
-    platform: "Mastodon",
-    account: "Yemen keyword monitor",
-    handle: "Mastodon",
-    language: "Multiple",
-    status: "Planned",
-    topic: "General",
-    text: "Public posts from selected Mastodon instances can appear here.",
-    url: "https://joinmastodon.org/",
-  },
+type SocialResponse = {
+  ok: boolean;
+  updatedAt?: string;
+  authenticatedAs?: string;
+  count?: number;
+
+  providers?: {
+    bluesky?: number;
+    reddit?: number;
+  };
+
+  redditStatus?: string;
+
+  topicCounts?: Record<string, number>;
+  languageCounts?: Record<string, number>;
+
+  items?: SocialItem[];
+
+  error?: string;
+};
+
+const topics = [
+  "All",
+  "Security",
+  "Maritime",
+  "Politics",
+  "Humanitarian",
+  "General",
 ];
 
 const platforms = [
   "All",
-  "X",
-  "Reddit",
   "Bluesky",
-  "YouTube",
-  "Telegram",
-  "Facebook",
-  "Instagram",
-  "Truth Social",
-  "Substack",
-  "Mastodon",
+  "Reddit",
 ];
 
 export default function SocialMonitorPage() {
+  const [items, setItems] =
+    useState<SocialItem[]>([]);
+
   const [search, setSearch] =
     useState("");
 
-  const [activePlatform, setActivePlatform] =
-    useState("All");
-
-  const filtered = useMemo(() => {
-    const query =
-      search.toLowerCase().trim();
-
-    return socialItems.filter(
-      (item) => {
-        const matchesPlatform =
-          activePlatform === "All" ||
-          item.platform === activePlatform;
-
-        const matchesSearch =
-          !query ||
-          item.platform
-            .toLowerCase()
-            .includes(query) ||
-          item.account
-            .toLowerCase()
-            .includes(query) ||
-          item.handle
-            .toLowerCase()
-            .includes(query) ||
-          item.topic
-            .toLowerCase()
-            .includes(query) ||
-          item.text
-            .toLowerCase()
-            .includes(query);
-
-        return (
-          matchesPlatform &&
-          matchesSearch
-        );
-      }
-    );
-  }, [
-    search,
+  const [
     activePlatform,
-  ]);
+    setActivePlatform,
+  ] = useState("All");
+
+  const [
+    activeTopic,
+    setActiveTopic,
+  ] = useState("All");
+
+  const [
+    redditStatus,
+    setRedditStatus,
+  ] = useState(
+    "Awaiting API approval"
+  );
+
+  const [
+    authenticatedAs,
+    setAuthenticatedAs,
+  ] = useState("");
+
+  const [
+    updatedAt,
+    setUpdatedAt,
+  ] = useState("");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState(false);
+
+  useEffect(() => {
+    async function loadSocial() {
+      try {
+        const response =
+          await fetch(
+            "/api/social",
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Social request failed"
+          );
+        }
+
+        const data: SocialResponse =
+          await response.json();
+
+        if (!data.ok) {
+          throw new Error(
+            data.error ||
+              "Social API returned an error"
+          );
+        }
+
+        setItems(
+          data.items || []
+        );
+
+        setRedditStatus(
+          data.redditStatus ||
+            "Awaiting API approval"
+        );
+
+        setAuthenticatedAs(
+          data.authenticatedAs ||
+            ""
+        );
+
+        setUpdatedAt(
+          data.updatedAt || ""
+        );
+
+        setError(false);
+      } catch (err) {
+        console.error(err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSocial();
+
+    const interval =
+      window.setInterval(
+        loadSocial,
+        300000
+      );
+
+    return () =>
+      window.clearInterval(
+        interval
+      );
+  }, []);
+
+  const filtered =
+    useMemo(() => {
+      const query =
+        search
+          .toLowerCase()
+          .trim();
+
+      return items.filter(
+        (item) => {
+          const matchesPlatform =
+            activePlatform ===
+              "All" ||
+            item.platform ===
+              activePlatform;
+
+          const matchesTopic =
+            activeTopic ===
+              "All" ||
+            item.topic ===
+              activeTopic;
+
+          const matchesSearch =
+            !query ||
+            item.text
+              .toLowerCase()
+              .includes(query) ||
+            item.account
+              .toLowerCase()
+              .includes(query) ||
+            item.handle
+              .toLowerCase()
+              .includes(query) ||
+            item.topic
+              .toLowerCase()
+              .includes(query) ||
+            item.language
+              .toLowerCase()
+              .includes(query);
+
+          return (
+            matchesPlatform &&
+            matchesTopic &&
+            matchesSearch
+          );
+        }
+      );
+    }, [
+      items,
+      activePlatform,
+      activeTopic,
+      search,
+    ]);
+
+  const blueskyCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.platform ===
+            "Bluesky"
+        ).length,
+      [items]
+    );
+
+  const arabicCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.language
+              .toLowerCase()
+              .includes("ar")
+        ).length,
+      [items]
+    );
+
+  const securityCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.topic ===
+            "Security"
+        ).length,
+      [items]
+    );
+
+  const maritimeCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.topic ===
+            "Maritime"
+        ).length,
+      [items]
+    );
 
   return (
     <main>
@@ -226,7 +297,7 @@ export default function SocialMonitorPage() {
         </div>
       </header>
 
-      <section className="sourcesPage">
+      <section className="liveFeedPage">
         <Link
           href="/"
           className="backLink"
@@ -235,7 +306,7 @@ export default function SocialMonitorPage() {
           Back to overview
         </Link>
 
-        <div className="sourcesHeading">
+        <div className="liveFeedHeading">
           <div>
             <div className="eyebrow">
               SOCIAL INTELLIGENCE
@@ -246,8 +317,9 @@ export default function SocialMonitorPage() {
             </h1>
 
             <p>
-              Public social reporting related to Yemen and the Red Sea.
-              Social posts will remain separate from confirmed news reporting.
+              Live public social
+              reporting related to
+              Yemen and the Red Sea.
             </p>
           </div>
 
@@ -256,7 +328,7 @@ export default function SocialMonitorPage() {
 
             <input
               type="text"
-              placeholder="Search platforms or topics"
+              placeholder="Search posts or accounts"
               value={search}
               onChange={(event) =>
                 setSearch(
@@ -267,106 +339,389 @@ export default function SocialMonitorPage() {
           </div>
         </div>
 
-        <div className="categoryFilters sourceFilters">
-          {platforms.map(
-            (platform) => (
-              <button
-                key={platform}
-                className={
-                  activePlatform === platform
-                    ? "categoryButton activeCategoryButton"
-                    : "categoryButton"
-                }
-                onClick={() =>
-                  setActivePlatform(
-                    platform
-                  )
-                }
-              >
-                {platform}
+        <div className="metricsGrid">
+          <SocialMetric
+            label="Live social posts"
+            value={String(
+              items.length
+            )}
+            detail="Current monitored results"
+          />
 
-                <span>
-                  {platform === "All"
-                    ? socialItems.length
-                    : socialItems.filter(
-                        (item) =>
-                          item.platform === platform
-                      ).length}
-                </span>
-              </button>
-            )
-          )}
+          <SocialMetric
+            label="Bluesky"
+            value={String(
+              blueskyCount
+            )}
+            detail="Authenticated live feed"
+          />
+
+          <SocialMetric
+            label="Security"
+            value={String(
+              securityCount
+            )}
+            detail="Social security reporting"
+          />
+
+          <SocialMetric
+            label="Maritime"
+            value={String(
+              maritimeCount
+            )}
+            detail="Red Sea reporting"
+          />
         </div>
 
-        <div className="socialNotice">
-          <CircleAlert size={17} />
+        <div className="card filterCard">
+          <div className="eyebrow">
+            PLATFORM
+          </div>
 
-          <div>
-            <strong>
-              Social content is not automatically verified.
-            </strong>
+          <div className="categoryFilters">
+            {platforms.map(
+              (platform) => (
+                <button
+                  key={platform}
+                  className={
+                    activePlatform ===
+                    platform
+                      ? "categoryButton activeCategoryButton"
+                      : "categoryButton"
+                  }
+                  onClick={() =>
+                    setActivePlatform(
+                      platform
+                    )
+                  }
+                >
+                  {platform}
 
-            <p>
-              Future live posts will be labeled by source status and confidence before they are treated as confirmed reporting.
-            </p>
+                  <span>
+                    {platform ===
+                    "All"
+                      ? items.length
+                      : platform ===
+                        "Bluesky"
+                      ? blueskyCount
+                      : 0}
+                  </span>
+                </button>
+              )
+            )}
+          </div>
+
+          <div
+            className="eyebrow"
+            style={{
+              marginTop: "18px",
+            }}
+          >
+            TOPIC
+          </div>
+
+          <div className="categoryFilters">
+            {topics.map(
+              (topic) => (
+                <button
+                  key={topic}
+                  className={
+                    activeTopic ===
+                    topic
+                      ? "categoryButton activeCategoryButton"
+                      : "categoryButton"
+                  }
+                  onClick={() =>
+                    setActiveTopic(
+                      topic
+                    )
+                  }
+                >
+                  {topic}
+
+                  <span>
+                    {topic === "All"
+                      ? items.length
+                      : items.filter(
+                          (item) =>
+                            item.topic ===
+                            topic
+                        ).length}
+                  </span>
+                </button>
+              )
+            )}
           </div>
         </div>
 
-        <div className="sourcesGrid">
-          {filtered.map(
-            (item) => (
-              <a
-                key={item.id}
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="sourceCard socialCard"
+        <div className="card">
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              alignItems:
+                "flex-start",
+            }}
+          >
+            <CircleAlert
+              size={18}
+            />
+
+            <div>
+              <div className="eyebrow">
+                VERIFICATION NOTICE
+              </div>
+
+              <p
+                style={{
+                  marginBottom: 0,
+                  lineHeight: 1.6,
+                }}
               >
-                <div className="sourceCardTop">
-                  <div className="sourceIcon">
-                    <Filter size={18} />
+                Social posts are
+                displayed as
+                unverified public
+                reporting. They
+                should not be treated
+                as confirmed facts
+                unless supported by
+                independent reporting.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="liveFeedResults"
+          style={{
+            marginTop: "14px",
+          }}
+        >
+          <div className="feedResultsHeader">
+            <span>
+              {filtered.length} posts
+            </span>
+
+            <span>
+              {arabicCount} Arabic
+              {" · "}
+              Reddit{" "}
+              {redditStatus}
+            </span>
+          </div>
+
+          {authenticatedAs && (
+            <div
+              className="feedResultsHeader"
+              style={{
+                textTransform:
+                  "none",
+              }}
+            >
+              <span>
+                Bluesky connected as{" "}
+                {authenticatedAs}
+              </span>
+
+              <span>
+                {updatedAt
+                  ? `Updated ${formatUpdateTime(
+                      updatedAt
+                    )}`
+                  : ""}
+              </span>
+            </div>
+          )}
+
+          {loading && (
+            <div className="liveFeedEmpty">
+              Loading social
+              reporting...
+            </div>
+          )}
+
+          {error && (
+            <div className="liveFeedEmpty">
+              Unable to load social
+              reporting.
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            filtered.length ===
+              0 && (
+              <div className="liveFeedEmpty">
+                No matching social
+                posts.
+              </div>
+            )}
+
+          {!loading &&
+            !error &&
+            filtered.map(
+              (item) => (
+                <article
+                  key={item.id}
+                  className="liveFeedRow"
+                >
+                  <div className="liveFeedTime">
+                    {formatTime(
+                      item.date
+                    )}
                   </div>
 
-                  <span className="sourceStatus plannedSource">
-                    {item.status}
-                  </span>
-                </div>
+                  <div className="liveFeedBody">
+                    <div className="feedMeta">
+                      {item.platform}
+                      {" · "}
+                      {item.topic}
+                      {" · "}
+                      {item.language}
+                      {" · "}
+                      {item.status}
+                    </div>
 
-                <div className="socialPlatform">
-                  {item.platform}
-                </div>
+                    <div
+                      style={{
+                        marginBottom:
+                          "7px",
+                        color:
+                          "#75655e",
+                        fontSize:
+                          "11px",
+                      }}
+                    >
+                      {item.account}
+                      {" "}
+                      {item.handle}
+                    </div>
 
-                <h2>
-                  {item.account}
-                </h2>
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="liveFeedTitle"
+                    >
+                      {item.text}
+                    </a>
 
-                <div className="socialHandle">
-                  {item.handle}
-                </div>
+                    <div
+                      style={{
+                        marginTop:
+                          "9px",
+                      }}
+                    >
+                      <a
+                        href={
+                          item.url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="backLink"
+                        style={{
+                          marginBottom:
+                            0,
+                        }}
+                      >
+                        Open original
+                        post
+                        <ExternalLink
+                          size={13}
+                        />
+                      </a>
+                    </div>
+                  </div>
 
-                <p className="socialText">
-                  {item.text}
-                </p>
-
-                <div className="sourceDetails">
-                  <span>
-                    {item.language}
-                  </span>
-
-                  <span>
-                    {item.topic}
-                  </span>
-
-                  <span className="socialVerification">
-                    <BadgeCheck size={12} />
-                    Awaiting connection
-                  </span>
-                </div>
-              </a>
-            )
-          )}
+                  <div
+                    className="relevanceBadge"
+                    title="Relevance score"
+                  >
+                    {
+                      item.relevance
+                    }
+                  </div>
+                </article>
+              )
+            )}
         </div>
       </section>
     </main>
+  );
+}
+
+function SocialMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="metricCard">
+      <div>
+        <div className="metricLabel">
+          {label}
+        </div>
+
+        <div className="metricValue">
+          {value}
+        </div>
+
+        <div className="metricDetail">
+          {detail}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatTime(
+  date: string
+) {
+  const parsed =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return parsed.toLocaleString(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  );
+}
+
+function formatUpdateTime(
+  date: string
+) {
+  const parsed =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    }
   );
 }
