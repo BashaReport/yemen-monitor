@@ -36,7 +36,11 @@ export type MappedIncident = {
 
 type MapClientProps = {
   incidents: MappedIncident[];
-  selectedLocation: string;
+  selectedLocation?: string;
+  height?: number;
+  zoom?: number;
+  scrollWheelZoom?: boolean;
+  compact?: boolean;
 };
 
 function markerColor(
@@ -69,7 +73,11 @@ function markerColor(
 
 export default function MapClient({
   incidents,
-  selectedLocation,
+  selectedLocation = "All",
+  height = 620,
+  zoom = 6,
+  scrollWheelZoom = true,
+  compact = false,
 }: MapClientProps) {
   const visible =
     selectedLocation === "All"
@@ -83,13 +91,15 @@ export default function MapClient({
   return (
     <MapContainer
       center={[15.3, 46.4]}
-      zoom={6}
+      zoom={zoom}
       minZoom={5}
       maxZoom={11}
-      scrollWheelZoom
+      scrollWheelZoom={
+        scrollWheelZoom
+      }
       style={{
         width: "100%",
-        height: "620px",
+        height: `${height}px`,
         borderRadius: "12px",
         zIndex: 1,
       }}
@@ -106,7 +116,7 @@ export default function MapClient({
               incident.article.category
             );
 
-          const radius =
+          const baseRadius =
             incident.article.relevance >=
             10
               ? 10
@@ -115,13 +125,14 @@ export default function MapClient({
               ? 8
               : 6;
 
-          /*
-           * Multiple reports can refer to
-           * the same city. A tiny offset
-           * keeps those markers clickable
-           * without pretending we know a
-           * more precise incident location.
-           */
+          const radius =
+            compact
+              ? Math.max(
+                  5,
+                  baseRadius - 2
+                )
+              : baseRadius;
+
           const offsetIndex =
             index % 7;
 
@@ -167,7 +178,9 @@ export default function MapClient({
                 <div
                   style={{
                     minWidth:
-                      "220px",
+                      compact
+                        ? "180px"
+                        : "220px",
                   }}
                 >
                   <div
