@@ -287,27 +287,27 @@ const navItems = [
   },
   {
     name: "Maritime",
-    href: "#",
+    href: "/maritime",
   },
   {
     name: "Politics",
-    href: "#",
+    href: "/politics",
   },
   {
     name: "Humanitarian",
-    href: "#",
+    href: "/humanitarian",
   },
   {
     name: "Economy",
-    href: "#",
+    href: "/economy",
   },
   {
     name: "Sources",
     href: "/sources",
   },
   {
-    name: "Briefings",
-    href: "#",
+    name: "Contact Us",
+    href: "/contact",
   },
 ];
 
