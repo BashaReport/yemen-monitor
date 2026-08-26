@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
 import {
   ArrowLeft,
   ExternalLink,
@@ -9,180 +11,182 @@ import {
   Ship,
   ShieldAlert,
 } from "lucide-react";
+
 import {
   useEffect,
   useMemo,
   useState,
 } from "react";
 
-type Article = {
-  id: number;
-  title: string;
-  url: string;
-  date: string;
-  source: string;
-  category: string;
-  relevance: number;
-  provider?: string;
-};
+import type {
+  MapArticle,
+  MapLocation,
+  MappedIncident,
+} from "./MapClient";
+
+const MapClient = dynamic(
+  () => import("./MapClient"),
+  {
+    ssr: false,
+
+    loading: () => (
+      <div
+        style={{
+          width: "100%",
+          height: "620px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent:
+            "center",
+          background: "#e8ded1",
+          borderRadius: "12px",
+          color: "#6c5a54",
+        }}
+      >
+        Loading live map...
+      </div>
+    ),
+  }
+);
 
 type NewsResponse = {
   updatedAt: string;
   count: number;
-  articles: Article[];
+  articles: MapArticle[];
 };
 
-type LocationItem = {
-  name: string;
-  type: string;
-  lat: number;
-  lon: number;
-  keywords: string[];
-};
-
-type MappedIncident = {
-  article: Article;
-  location: LocationItem;
-};
-
-const MAP_BOUNDS = {
-  west: 41,
-  east: 56,
-  south: 10,
-  north: 20,
-};
-
-const monitoredLocations: LocationItem[] = [
-  {
-    name: "Sana'a",
-    type: "Capital",
-    lat: 15.3694,
-    lon: 44.191,
-    keywords: [
-      "sanaa",
-      "sana'a",
-      "صنعاء",
-    ],
-  },
-  {
-    name: "Aden",
-    type: "Southern hub",
-    lat: 12.7855,
-    lon: 45.0187,
-    keywords: [
-      "aden",
-      "عدن",
-    ],
-  },
-  {
-    name: "Hudaydah",
-    type: "Red Sea port",
-    lat: 14.7979,
-    lon: 42.9545,
-    keywords: [
-      "hudaydah",
-      "hodeidah",
-      "الحديدة",
-    ],
-  },
-  {
-    name: "Marib",
-    type: "Central front",
-    lat: 15.4625,
-    lon: 45.3258,
-    keywords: [
-      "marib",
-      "ma'rib",
-      "مأرب",
-    ],
-  },
-  {
-    name: "Taiz",
-    type: "Front line",
-    lat: 13.5795,
-    lon: 44.0209,
-    keywords: [
-      "taiz",
-      "تعز",
-    ],
-  },
-  {
-    name: "Mukalla",
-    type: "Hadramout",
-    lat: 14.5425,
-    lon: 49.1242,
-    keywords: [
-      "mukalla",
-      "المكلا",
-    ],
-  },
-  {
-    name: "Saada",
-    type: "Northern stronghold",
-    lat: 16.9402,
-    lon: 43.7639,
-    keywords: [
-      "saada",
-      "sa'dah",
-      "صعدة",
-    ],
-  },
-  {
-    name: "Shabwa",
-    type: "Southern governorate",
-    lat: 14.5377,
-    lon: 46.8319,
-    keywords: [
-      "shabwa",
-      "شبوة",
-    ],
-  },
-  {
-    name: "Hadramout",
-    type: "Eastern governorate",
-    lat: 15.9304,
-    lon: 48.6267,
-    keywords: [
-      "hadramout",
-      "hadramawt",
-      "حضرموت",
-    ],
-  },
-  {
-    name: "Bab al-Mandab",
-    type: "Maritime chokepoint",
-    lat: 12.5833,
-    lon: 43.3333,
-    keywords: [
-      "bab al-mandab",
-      "bab el-mandeb",
-      "باب المندب",
-    ],
-  },
-  {
-    name: "Red Sea",
-    type: "Maritime zone",
-    lat: 15.5,
-    lon: 42.4,
-    keywords: [
-      "red sea",
-      "البحر الأحمر",
-    ],
-  },
-  {
-    name: "Gulf of Aden",
-    type: "Maritime zone",
-    lat: 12.2,
-    lon: 47.5,
-    keywords: [
-      "gulf of aden",
-      "خليج عدن",
-    ],
-  },
-];
+const monitoredLocations: MapLocation[] =
+  [
+    {
+      name: "Sana'a",
+      type: "Capital",
+      lat: 15.3694,
+      lon: 44.191,
+      keywords: [
+        "sanaa",
+        "sana'a",
+        "صنعاء",
+      ],
+    },
+    {
+      name: "Aden",
+      type: "Southern hub",
+      lat: 12.7855,
+      lon: 45.0187,
+      keywords: [
+        "aden",
+        "عدن",
+      ],
+    },
+    {
+      name: "Hudaydah",
+      type: "Red Sea port",
+      lat: 14.7979,
+      lon: 42.9545,
+      keywords: [
+        "hudaydah",
+        "hodeidah",
+        "الحديدة",
+      ],
+    },
+    {
+      name: "Marib",
+      type: "Central front",
+      lat: 15.4625,
+      lon: 45.3258,
+      keywords: [
+        "marib",
+        "ma'rib",
+        "مأرب",
+      ],
+    },
+    {
+      name: "Taiz",
+      type: "Front line",
+      lat: 13.5795,
+      lon: 44.0209,
+      keywords: [
+        "taiz",
+        "تعز",
+      ],
+    },
+    {
+      name: "Mukalla",
+      type: "Hadramout",
+      lat: 14.5425,
+      lon: 49.1242,
+      keywords: [
+        "mukalla",
+        "المكلا",
+      ],
+    },
+    {
+      name: "Saada",
+      type: "Northern stronghold",
+      lat: 16.9402,
+      lon: 43.7639,
+      keywords: [
+        "saada",
+        "sa'dah",
+        "صعدة",
+      ],
+    },
+    {
+      name: "Shabwa",
+      type: "Southern governorate",
+      lat: 14.5377,
+      lon: 46.8319,
+      keywords: [
+        "shabwa",
+        "شبوة",
+      ],
+    },
+    {
+      name: "Hadramout",
+      type: "Eastern governorate",
+      lat: 15.9304,
+      lon: 48.6267,
+      keywords: [
+        "hadramout",
+        "hadramawt",
+        "حضرموت",
+      ],
+    },
+    {
+      name: "Bab al-Mandab",
+      type: "Maritime chokepoint",
+      lat: 12.5833,
+      lon: 43.3333,
+      keywords: [
+        "bab al-mandab",
+        "bab el-mandeb",
+        "باب المندب",
+      ],
+    },
+    {
+      name: "Red Sea",
+      type: "Maritime zone",
+      lat: 15.5,
+      lon: 42.4,
+      keywords: [
+        "red sea",
+        "البحر الأحمر",
+      ],
+    },
+    {
+      name: "Gulf of Aden",
+      type: "Maritime zone",
+      lat: 12.2,
+      lon: 47.5,
+      keywords: [
+        "gulf of aden",
+        "خليج عدن",
+      ],
+    },
+  ];
 
 function findArticleLocation(
-  article: Article
+  article: MapArticle
 ) {
   const text =
     article.title.toLowerCase();
@@ -198,56 +202,9 @@ function findArticleLocation(
   );
 }
 
-function mapPosition(
-  location: LocationItem
-) {
-  const left =
-    ((location.lon -
-      MAP_BOUNDS.west) /
-      (MAP_BOUNDS.east -
-        MAP_BOUNDS.west)) *
-    100;
-
-  const top =
-    ((MAP_BOUNDS.north -
-      location.lat) /
-      (MAP_BOUNDS.north -
-        MAP_BOUNDS.south)) *
-    100;
-
-  return {
-    left: `${left}%`,
-    top: `${top}%`,
-  };
-}
-
-function markerColor(
-  category: string
-) {
-  if (category === "Security") {
-    return "#8a2b25";
-  }
-
-  if (category === "Maritime") {
-    return "#31566b";
-  }
-
-  if (
-    category === "Humanitarian"
-  ) {
-    return "#8a6b24";
-  }
-
-  if (category === "Politics") {
-    return "#665071";
-  }
-
-  return "#a86604";
-}
-
 export default function MapPage() {
   const [articles, setArticles] =
-    useState<Article[]>([]);
+    useState<MapArticle[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -259,14 +216,6 @@ export default function MapPage() {
     selectedLocation,
     setSelectedLocation,
   ] = useState("All");
-
-  const [
-    selectedIncident,
-    setSelectedIncident,
-  ] =
-    useState<MappedIncident | null>(
-      null
-    );
 
   useEffect(() => {
     async function loadNews() {
@@ -295,6 +244,7 @@ export default function MapPage() {
         setError(false);
       } catch (err) {
         console.error(err);
+
         setError(true);
       } finally {
         setLoading(false);
@@ -327,35 +277,19 @@ export default function MapPage() {
               article
             );
 
-          if (location) {
-            mapped.push({
-              article,
-              location,
-            });
+          if (!location) {
+            return;
           }
+
+          mapped.push({
+            article,
+            location,
+          });
         }
       );
 
       return mapped;
     }, [articles]);
-
-  const visibleIncidents =
-    useMemo(() => {
-      if (
-        selectedLocation === "All"
-      ) {
-        return mappedIncidents;
-      }
-
-      return mappedIncidents.filter(
-        (incident) =>
-          incident.location.name ===
-          selectedLocation
-      );
-    }, [
-      mappedIncidents,
-      selectedLocation,
-    ]);
 
   const locationCounts =
     useMemo(() => {
@@ -381,37 +315,31 @@ export default function MapPage() {
 
   const selectedArticles =
     useMemo(() => {
-      if (
+      const incidents =
         selectedLocation === "All"
-      ) {
-        return mappedIncidents
-          .map(
-            (incident) =>
-              incident.article
-          )
-          .sort(
-            (a, b) =>
-              new Date(
-                b.date
-              ).getTime() -
-              new Date(
-                a.date
-              ).getTime()
-          )
-          .slice(0, 12);
-      }
+          ? mappedIncidents
+          : mappedIncidents.filter(
+              (incident) =>
+                incident.location
+                  .name ===
+                selectedLocation
+            );
 
-      return mappedIncidents
-        .filter(
-          (incident) =>
-            incident.location.name ===
-            selectedLocation
-        )
+      return incidents
         .map(
           (incident) =>
             incident.article
         )
-        .slice(0, 12);
+        .sort(
+          (a, b) =>
+            new Date(
+              b.date
+            ).getTime() -
+            new Date(
+              a.date
+            ).getTime()
+        )
+        .slice(0, 15);
     }, [
       mappedIncidents,
       selectedLocation,
@@ -473,13 +401,15 @@ export default function MapPage() {
               GEOGRAPHIC MONITORING
             </div>
 
-            <h1>Yemen Map</h1>
+            <h1>
+              Yemen Map
+            </h1>
 
             <p>
-              Live geographic view of
-              reporting across Yemen,
-              the Red Sea and Gulf of
-              Aden.
+              Live geographic view
+              of reporting across
+              Yemen, the Red Sea and
+              Gulf of Aden.
             </p>
           </div>
         </div>
@@ -487,7 +417,9 @@ export default function MapPage() {
         <div className="metricsGrid">
           <MapMetric
             icon={
-              <MapPin size={18} />
+              <MapPin
+                size={18}
+              />
             }
             label="Mapped incidents"
             value={String(
@@ -511,7 +443,9 @@ export default function MapPage() {
 
           <MapMetric
             icon={
-              <Ship size={18} />
+              <Ship
+                size={18}
+              />
             }
             label="Maritime"
             value={String(
@@ -522,7 +456,9 @@ export default function MapPage() {
 
           <MapMetric
             icon={
-              <MapPin size={18} />
+              <MapPin
+                size={18}
+              />
             }
             label="Locations"
             value={String(
@@ -536,7 +472,7 @@ export default function MapPage() {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "minmax(0, 1.45fr) minmax(300px, 0.55fr)",
+              "minmax(0, 1.45fr) minmax(280px, 0.55fr)",
             gap: "14px",
             marginTop: "14px",
           }}
@@ -549,245 +485,81 @@ export default function MapPage() {
                 </div>
 
                 <h2>
-                  Yemen and surrounding
-                  waters
+                  Yemen and
+                  surrounding waters
                 </h2>
               </div>
-
-              <a
-                href="https://www.openstreetmap.org/#map=6/15.4/47.5"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="goldPill"
-              >
-                Open full map
-              </a>
             </div>
+
+            <MapClient
+              incidents={
+                mappedIncidents
+              }
+              selectedLocation={
+                selectedLocation
+              }
+            />
 
             <div
               style={{
-                position:
-                  "relative",
-                overflow:
-                  "hidden",
-                borderRadius:
-                  "12px",
-                border:
-                  "1px solid rgba(50, 3, 3, 0.12)",
-                height:
-                  "620px",
-                background:
-                  "#e8ded1",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "15px",
+                paddingTop:
+                  "14px",
+                fontSize: "10px",
               }}
             >
-              <iframe
-                title="Yemen OpenStreetMap"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=41.0%2C10.0%2C56.0%2C20.0&layer=mapnik"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: 0,
-                  pointerEvents:
-                    "none",
-                }}
-                loading="lazy"
+              <Legend
+                color="#8a2b25"
+                label="Security"
               />
 
-              {visibleIncidents.map(
-                (
-                  incident,
-                  index
-                ) => {
-                  const position =
-                    mapPosition(
-                      incident.location
-                    );
+              <Legend
+                color="#31566b"
+                label="Maritime"
+              />
 
-                  const offset =
-                    index % 5;
+              <Legend
+                color="#8a6b24"
+                label="Humanitarian"
+              />
 
-                  return (
-                    <button
-                      key={`${incident.article.id}-${incident.location.name}`}
-                      aria-label={`Open ${incident.article.title}`}
-                      title={
-                        incident.article
-                          .title
-                      }
-                      onClick={() =>
-                        setSelectedIncident(
-                          incident
-                        )
-                      }
-                      style={{
-                        position:
-                          "absolute",
-                        left:
-                          position.left,
-                        top:
-                          position.top,
-                        transform: `translate(${offset *
-                          3 -
-                          6}px, ${
-                          offset *
-                            2 -
-                          10
-                        }px)`,
-                        width:
-                          incident.article
-                            .relevance >=
-                          10
-                            ? "17px"
-                            : "13px",
-                        height:
-                          incident.article
-                            .relevance >=
-                          10
-                            ? "17px"
-                            : "13px",
-                        borderRadius:
-                          "50%",
-                        border:
-                          "2px solid #fff8ed",
-                        background:
-                          markerColor(
-                            incident
-                              .article
-                              .category
-                          ),
-                        boxShadow:
-                          "0 0 0 4px rgba(50,3,3,0.10)",
-                        cursor:
-                          "pointer",
-                        zIndex: 4,
-                      }}
-                    />
-                  );
-                }
-              )}
+              <Legend
+                color="#665071"
+                label="Politics"
+              />
 
-              <div
-                style={{
-                  position:
-                    "absolute",
-                  left: "15px",
-                  bottom: "15px",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "10px",
-                  padding:
-                    "8px 10px",
-                  borderRadius:
-                    "8px",
-                  background:
-                    "rgba(248,242,233,0.92)",
-                  border:
-                    "1px solid rgba(50,3,3,0.12)",
-                  fontSize:
-                    "10px",
-                  zIndex: 5,
-                }}
-              >
-                <Legend
-                  color="#8a2b25"
-                  label="Security"
-                />
+              <Legend
+                color="#476246"
+                label="Economy"
+              />
 
-                <Legend
-                  color="#31566b"
-                  label="Maritime"
-                />
-
-                <Legend
-                  color="#8a6b24"
-                  label="Humanitarian"
-                />
-
-                <Legend
-                  color="#665071"
-                  label="Politics"
-                />
-
-                <Legend
-                  color="#a86604"
-                  label="Other"
-                />
-              </div>
+              <Legend
+                color="#a86604"
+                label="Other"
+              />
             </div>
 
-            {selectedIncident && (
-              <div
-                style={{
-                  marginTop:
-                    "14px",
-                  padding:
-                    "16px",
-                  border:
-                    "1px solid rgba(50, 3, 3, 0.12)",
-                  borderRadius:
-                    "10px",
-                  background:
-                    "rgba(255,255,255,0.35)",
-                }}
-              >
-                <div className="feedMeta">
-                  {
-                    selectedIncident
-                      .location.name
-                  }
-                  {" · "}
-                  {
-                    selectedIncident
-                      .article.category
-                  }
-                  {" · "}
-                  {
-                    selectedIncident
-                      .article.source
-                  }
-                </div>
-
-                <a
-                  href={
-                    selectedIncident
-                      .article.url
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="liveFeedTitle"
-                >
-                  {
-                    selectedIncident
-                      .article.title
-                  }
-                </a>
-
-                <div
-                  style={{
-                    marginTop:
-                      "9px",
-                  }}
-                >
-                  <a
-                    href={
-                      selectedIncident
-                        .article.url
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="backLink"
-                    style={{
-                      marginBottom: 0,
-                    }}
-                  >
-                    Open report
-                    <ExternalLink
-                      size={13}
-                    />
-                  </a>
-                </div>
-              </div>
-            )}
+            <p
+              style={{
+                color: "#806e67",
+                fontSize: "10px",
+                lineHeight: 1.5,
+                marginTop: "12px",
+                marginBottom: 0,
+              }}
+            >
+              Markers use the
+              coordinates of the
+              named city or maritime
+              zone. They do not claim
+              to show the exact
+              incident location unless
+              precise coordinates are
+              available from the
+              source.
+            </p>
           </div>
 
           <div className="card">
@@ -814,15 +586,11 @@ export default function MapPage() {
                 marginBottom:
                   "10px",
               }}
-              onClick={() => {
+              onClick={() =>
                 setSelectedLocation(
                   "All"
-                );
-
-                setSelectedIncident(
-                  null
-                );
-              }}
+                )
+              }
             >
               All locations
 
@@ -846,15 +614,11 @@ export default function MapPage() {
                     key={
                       location.name
                     }
-                    onClick={() => {
+                    onClick={() =>
                       setSelectedLocation(
                         location.name
-                      );
-
-                      setSelectedIncident(
-                        null
-                      );
-                    }}
+                      )
+                    }
                     style={{
                       width: "100%",
                       display:
@@ -871,13 +635,13 @@ export default function MapPage() {
                         "1px solid rgba(50, 3, 3, 0.09)",
                       background:
                         "transparent",
+                      cursor:
+                        "pointer",
                       color:
                         selectedLocation ===
                         location.name
                           ? "#320303"
                           : "#49322e",
-                      cursor:
-                        "pointer",
                     }}
                   >
                     <div>
@@ -1085,10 +849,8 @@ function Legend({
         style={{
           width: "8px",
           height: "8px",
-          borderRadius:
-            "50%",
-          background:
-            color,
+          borderRadius: "50%",
+          background: color,
         }}
       />
 
