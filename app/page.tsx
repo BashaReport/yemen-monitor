@@ -93,8 +93,25 @@ type SocialResponse = {
   };
 
   redditStatus?: string;
-
   items?: SocialItem[];
+};
+
+type SubstackPost = {
+  id: string;
+  platform: string;
+  source: string;
+  author: string;
+  title: string;
+  text: string;
+  url: string;
+  image?: string;
+  publishedAt?: string | null;
+};
+
+type SubstackResponse = {
+  ok: boolean;
+  count?: number;
+  posts?: SubstackPost[];
 };
 
 type MapLocation = {
@@ -328,6 +345,96 @@ function findArticleLocation(
   );
 }
 
+function detectSubstackTopic(
+  post: SubstackPost
+) {
+  const text =
+    `${post.title} ${post.text}`.toLowerCase();
+
+  if (
+    text.includes("ship") ||
+    text.includes("vessel") ||
+    text.includes("red sea") ||
+    text.includes("gulf of aden") ||
+    text.includes("maritime") ||
+    text.includes("port")
+  ) {
+    return "Maritime";
+  }
+
+  if (
+    text.includes("attack") ||
+    text.includes("strike") ||
+    text.includes("missile") ||
+    text.includes("drone") ||
+    text.includes("military") ||
+    text.includes("houthi") ||
+    text.includes("battle")
+  ) {
+    return "Security";
+  }
+
+  if (
+    text.includes("government") ||
+    text.includes("political") ||
+    text.includes("minister") ||
+    text.includes("president") ||
+    text.includes("negotiation")
+  ) {
+    return "Politics";
+  }
+
+  if (
+    text.includes("food") ||
+    text.includes("health") ||
+    text.includes("humanitarian") ||
+    text.includes("aid") ||
+    text.includes("displacement")
+  ) {
+    return "Humanitarian";
+  }
+
+  if (
+    text.includes("oil") ||
+    text.includes("gas") ||
+    text.includes("economy") ||
+    text.includes("economic") ||
+    text.includes("currency")
+  ) {
+    return "Economy";
+  }
+
+  return "General";
+}
+
+function substackToSocialItem(
+  post: SubstackPost
+): SocialItem {
+  return {
+    id: `substack-${post.id}`,
+    platform: "Substack",
+    account:
+      post.source ||
+      "Basha Report",
+    handle:
+      post.author || "",
+    text:
+      post.text?.trim()
+        ? `${post.title} — ${post.text}`
+        : post.title,
+    url: post.url,
+    date:
+      post.publishedAt ||
+      new Date().toISOString(),
+    topic:
+      detectSubstackTopic(post),
+    language: "EN",
+    status:
+      "Published analysis",
+    relevance: 8,
+  };
+}
+
 export default function Home() {
   const [articles, setArticles] =
     useState<Article[]>([]);
@@ -355,11 +462,6 @@ export default function Home() {
     socialItems,
     setSocialItems,
   ] = useState<SocialItem[]>([]);
-
-  const [
-    socialCount,
-    setSocialCount,
-  ] = useState(0);
 
   const [
     socialLoading,
@@ -405,35 +507,72 @@ export default function Home() {
 
     async function loadSocial() {
       try {
-        const response =
-          await fetch(
+        const [
+          socialResponse,
+          substackResponse,
+        ] = await Promise.all([
+          fetch(
             "/api/social",
             {
               cache: "no-store",
             }
-          );
+          ),
 
-        if (!response.ok) {
-          throw new Error(
-            "Social request failed"
-          );
+          fetch(
+            "/api/substack",
+            {
+              cache: "no-store",
+            }
+          ),
+        ]);
+
+        let combined:
+          SocialItem[] = [];
+
+        if (socialResponse.ok) {
+          const data:
+            SocialResponse =
+              await socialResponse.json();
+
+          if (data.ok) {
+            combined.push(
+              ...(data.items || [])
+            );
+          }
         }
 
-        const data: SocialResponse =
-          await response.json();
+        if (
+          substackResponse.ok
+        ) {
+          const data:
+            SubstackResponse =
+              await substackResponse.json();
 
-        if (data.ok) {
-          setSocialItems(
-            data.items || []
-          );
-
-          setSocialCount(
-            data.count || 0
-          );
+          if (data.ok) {
+            combined.push(
+              ...(data.posts || []).map(
+                substackToSocialItem
+              )
+            );
+          }
         }
+
+        combined = combined.sort(
+          (a, b) =>
+            new Date(
+              b.date
+            ).getTime() -
+            new Date(
+              a.date
+            ).getTime()
+        );
+
+        setSocialItems(
+          combined
+        );
       } catch (err) {
         console.error(
-          "Social homepage error",
+          "Homepage social error",
           err
         );
       } finally {
@@ -514,8 +653,8 @@ export default function Home() {
 
   const mappedIncidents =
     useMemo(() => {
-      const mapped: MappedIncident[] =
-        [];
+      const mapped:
+        MappedIncident[] = [];
 
       timeFilteredArticles.forEach(
         (article) => {
@@ -579,6 +718,23 @@ export default function Home() {
         ).length,
       [timeFilteredArticles]
     );
+
+  const socialCount =
+    socialItems.length;
+
+  const blueskyCount =
+    socialItems.filter(
+      (item) =>
+        item.platform ===
+        "Bluesky"
+    ).length;
+
+  const substackCount =
+    socialItems.filter(
+      (item) =>
+        item.platform ===
+        "Substack"
+    ).length;
 
   const latestArticles =
     filteredArticles.slice(
@@ -721,7 +877,7 @@ export default function Home() {
             <MessageCircle
               size={14}
             />
-            {socialCount} social posts
+            {socialCount} social items
           </Link>
         )}
       </section>
@@ -896,15 +1052,31 @@ export default function Home() {
                 <h2
                   style={{
                     marginBottom:
-                      "12px",
+                      "6px",
                   }}
                 >
                   Social Monitor
                 </h2>
 
+                <div
+                  style={{
+                    color:
+                      "#806e67",
+                    fontSize:
+                      "10px",
+                    marginBottom:
+                      "14px",
+                  }}
+                >
+                  {blueskyCount} Bluesky
+                  {" · "}
+                  {substackCount} Substack
+                </div>
+
                 {socialLoading && (
                   <p>
-                    Loading public social reporting...
+                    Loading public
+                    reporting...
                   </p>
                 )}
 
@@ -912,7 +1084,9 @@ export default function Home() {
                   latestSocialItems.length ===
                     0 && (
                     <p>
-                      No social reporting is available right now.
+                      No social reporting
+                      is available right
+                      now.
                     </p>
                   )}
 
@@ -925,11 +1099,15 @@ export default function Home() {
                           item,
                           index
                         ) => (
-                          <Link
+                          <a
                             key={
                               item.id
                             }
-                            href="/social"
+                            href={
+                              item.url
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
                             style={{
                               display:
                                 "grid",
@@ -1017,7 +1195,7 @@ export default function Home() {
                                 }
                               </div>
                             </div>
-                          </Link>
+                          </a>
                         )
                       )}
                     </div>
@@ -1063,7 +1241,7 @@ export default function Home() {
                     "uppercase",
                 }}
               >
-                Live posts
+                Social items
               </div>
 
               <div
@@ -1084,6 +1262,7 @@ export default function Home() {
                 }}
               >
                 Open Social Monitor
+
                 <ExternalLink
                   size={13}
                 />
@@ -1174,7 +1353,8 @@ export default function Home() {
 
             {error && (
               <div className="feedItem">
-                Unable to load live reporting.
+                Unable to load live
+                reporting.
               </div>
             )}
 
@@ -1183,7 +1363,9 @@ export default function Home() {
               latestArticles.length ===
                 0 && (
                 <div className="feedItem">
-                  No reports in this category during the selected time window.
+                  No reports in this
+                  category during the
+                  selected time window.
                 </div>
               )}
 
@@ -1308,7 +1490,8 @@ export default function Home() {
               {
                 mappedIncidents.length
               }{" "}
-              mapped reports in the selected time window
+              mapped reports in the
+              selected time window
             </span>
 
             <Link
@@ -1334,7 +1517,8 @@ export default function Home() {
         </div>
 
         <div>
-          Independent monitoring and analysis
+          Independent monitoring and
+          analysis
         </div>
       </footer>
     </main>
@@ -1420,9 +1604,11 @@ function formatSocialTime(
     return "";
   }
 
-  return parsed.toLocaleTimeString(
+  return parsed.toLocaleString(
     "en-US",
     {
+      month: "short",
+      day: "numeric",
       hour: "numeric",
       minute: "2-digit",
     }
