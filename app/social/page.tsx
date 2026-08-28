@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
 import {
   ArrowLeft,
   CircleAlert,
   ExternalLink,
   Search,
 } from "lucide-react";
+
 import {
   useEffect,
   useMemo,
@@ -41,11 +43,27 @@ type SocialResponse = {
 
   redditStatus?: string;
 
-  topicCounts?: Record<string, number>;
-  languageCounts?: Record<string, number>;
-
   items?: SocialItem[];
 
+  error?: string;
+};
+
+type SubstackPost = {
+  id: string;
+  platform: string;
+  source: string;
+  author: string;
+  title: string;
+  text: string;
+  url: string;
+  image?: string;
+  publishedAt?: string | null;
+};
+
+type SubstackResponse = {
+  ok: boolean;
+  count?: number;
+  posts?: SubstackPost[];
   error?: string;
 };
 
@@ -55,14 +73,119 @@ const topics = [
   "Maritime",
   "Politics",
   "Humanitarian",
+  "Economy",
   "General",
 ];
 
 const platforms = [
   "All",
   "Bluesky",
+  "Substack",
   "Reddit",
 ];
+
+function detectTopic(
+  title: string,
+  text: string
+) {
+  const combined =
+    `${title} ${text}`.toLowerCase();
+
+  if (
+    combined.includes("ship") ||
+    combined.includes("vessel") ||
+    combined.includes("red sea") ||
+    combined.includes("gulf of aden") ||
+    combined.includes("bab al-mandab") ||
+    combined.includes("maritime") ||
+    combined.includes("port") ||
+    combined.includes("shipping")
+  ) {
+    return "Maritime";
+  }
+
+  if (
+    combined.includes("attack") ||
+    combined.includes("strike") ||
+    combined.includes("missile") ||
+    combined.includes("drone") ||
+    combined.includes("military") ||
+    combined.includes("fighter") ||
+    combined.includes("battle") ||
+    combined.includes("houthi")
+  ) {
+    return "Security";
+  }
+
+  if (
+    combined.includes("government") ||
+    combined.includes("minister") ||
+    combined.includes("president") ||
+    combined.includes("political") ||
+    combined.includes("diplomatic") ||
+    combined.includes("negotiation")
+  ) {
+    return "Politics";
+  }
+
+  if (
+    combined.includes("humanitarian") ||
+    combined.includes("food") ||
+    combined.includes("famine") ||
+    combined.includes("health") ||
+    combined.includes("displacement") ||
+    combined.includes("aid")
+  ) {
+    return "Humanitarian";
+  }
+
+  if (
+    combined.includes("economy") ||
+    combined.includes("economic") ||
+    combined.includes("oil") ||
+    combined.includes("gas") ||
+    combined.includes("currency") ||
+    combined.includes("inflation")
+  ) {
+    return "Economy";
+  }
+
+  return "General";
+}
+
+function substackToSocialItem(
+  post: SubstackPost
+): SocialItem {
+  const description =
+    post.text?.trim() || "";
+
+  const displayText =
+    description
+      ? `${post.title} — ${description}`
+      : post.title;
+
+  return {
+    id: `substack-${post.id}`,
+    platform: "Substack",
+    account:
+      post.source ||
+      "Basha Report",
+    handle:
+      post.author || "",
+    text: displayText,
+    url: post.url,
+    date:
+      post.publishedAt ||
+      new Date().toISOString(),
+    topic: detectTopic(
+      post.title,
+      post.text
+    ),
+    language: "EN",
+    status: "Published analysis",
+    relevance: 8,
+  };
+}
 
 export default function SocialMonitorPage() {
   const [items, setItems] =
@@ -107,47 +230,86 @@ export default function SocialMonitorPage() {
   useEffect(() => {
     async function loadSocial() {
       try {
-        const response =
-          await fetch(
+        const [
+          socialResponse,
+          substackResponse,
+        ] = await Promise.all([
+          fetch(
             "/api/social",
             {
               cache: "no-store",
             }
-          );
+          ),
 
-        if (!response.ok) {
-          throw new Error(
-            "Social request failed"
-          );
+          fetch(
+            "/api/substack",
+            {
+              cache: "no-store",
+            }
+          ),
+        ]);
+
+        let socialItems:
+          SocialItem[] = [];
+
+        let substackItems:
+          SocialItem[] = [];
+
+        if (socialResponse.ok) {
+          const data:
+            SocialResponse =
+              await socialResponse.json();
+
+          if (data.ok) {
+            socialItems =
+              data.items || [];
+
+            setRedditStatus(
+              data.redditStatus ||
+                "Awaiting API approval"
+            );
+
+            setAuthenticatedAs(
+              data.authenticatedAs ||
+                ""
+            );
+
+            setUpdatedAt(
+              data.updatedAt || ""
+            );
+          }
         }
 
-        const data: SocialResponse =
-          await response.json();
+        if (
+          substackResponse.ok
+        ) {
+          const data:
+            SubstackResponse =
+              await substackResponse.json();
 
-        if (!data.ok) {
-          throw new Error(
-            data.error ||
-              "Social API returned an error"
-          );
+          if (data.ok) {
+            substackItems = (
+              data.posts || []
+            ).map(
+              substackToSocialItem
+            );
+          }
         }
 
-        setItems(
-          data.items || []
+        const combined = [
+          ...socialItems,
+          ...substackItems,
+        ].sort(
+          (a, b) =>
+            new Date(
+              b.date
+            ).getTime() -
+            new Date(
+              a.date
+            ).getTime()
         );
 
-        setRedditStatus(
-          data.redditStatus ||
-            "Awaiting API approval"
-        );
-
-        setAuthenticatedAs(
-          data.authenticatedAs ||
-            ""
-        );
-
-        setUpdatedAt(
-          data.updatedAt || ""
-        );
+        setItems(combined);
 
         setError(false);
       } catch (err) {
@@ -236,6 +398,28 @@ export default function SocialMonitorPage() {
       [items]
     );
 
+  const substackCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.platform ===
+            "Substack"
+        ).length,
+      [items]
+    );
+
+  const redditCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            item.platform ===
+            "Reddit"
+        ).length,
+      [items]
+    );
+
   const arabicCount =
     useMemo(
       () =>
@@ -269,6 +453,34 @@ export default function SocialMonitorPage() {
         ).length,
       [items]
     );
+
+  function platformCount(
+    platform: string
+  ) {
+    if (platform === "All") {
+      return items.length;
+    }
+
+    if (
+      platform === "Bluesky"
+    ) {
+      return blueskyCount;
+    }
+
+    if (
+      platform === "Substack"
+    ) {
+      return substackCount;
+    }
+
+    if (
+      platform === "Reddit"
+    ) {
+      return redditCount;
+    }
+
+    return 0;
+  }
 
   return (
     <main>
@@ -317,9 +529,10 @@ export default function SocialMonitorPage() {
             </h1>
 
             <p>
-              Live public social
-              reporting related to
-              Yemen and the Red Sea.
+              Public reporting and
+              analysis from Bluesky,
+              Substack and connected
+              social sources.
             </p>
           </div>
 
@@ -328,7 +541,7 @@ export default function SocialMonitorPage() {
 
             <input
               type="text"
-              placeholder="Search posts or accounts"
+              placeholder="Search posts, analysis or accounts"
               value={search}
               onChange={(event) =>
                 setSearch(
@@ -341,7 +554,7 @@ export default function SocialMonitorPage() {
 
         <div className="metricsGrid">
           <SocialMetric
-            label="Live social posts"
+            label="Social items"
             value={String(
               items.length
             )}
@@ -353,23 +566,24 @@ export default function SocialMonitorPage() {
             value={String(
               blueskyCount
             )}
-            detail="Authenticated live feed"
+            detail="Live social reporting"
           />
 
           <SocialMetric
-            label="Security"
+            label="Substack"
             value={String(
-              securityCount
+              substackCount
             )}
-            detail="Social security reporting"
+            detail="Basha Report analysis"
           />
 
           <SocialMetric
-            label="Maritime"
+            label="Mapped topics"
             value={String(
-              maritimeCount
+              securityCount +
+                maritimeCount
             )}
-            detail="Red Sea reporting"
+            detail="Security and maritime"
           />
         </div>
 
@@ -398,13 +612,9 @@ export default function SocialMonitorPage() {
                   {platform}
 
                   <span>
-                    {platform ===
-                    "All"
-                      ? items.length
-                      : platform ===
-                        "Bluesky"
-                      ? blueskyCount
-                      : 0}
+                    {platformCount(
+                      platform
+                    )}
                   </span>
                 </button>
               )
@@ -414,7 +624,8 @@ export default function SocialMonitorPage() {
           <div
             className="eyebrow"
             style={{
-              marginTop: "18px",
+              marginTop:
+                "18px",
             }}
           >
             TOPIC
@@ -469,7 +680,7 @@ export default function SocialMonitorPage() {
 
             <div>
               <div className="eyebrow">
-                VERIFICATION NOTICE
+                SOURCE NOTICE
               </div>
 
               <p
@@ -479,13 +690,14 @@ export default function SocialMonitorPage() {
                 }}
               >
                 Social posts are
-                displayed as
-                unverified public
-                reporting. They
-                should not be treated
-                as confirmed facts
-                unless supported by
-                independent reporting.
+                treated as unverified
+                public reporting.
+                Substack items are
+                published analysis and
+                should be evaluated
+                according to their
+                source and supporting
+                evidence.
               </p>
             </div>
           </div>
@@ -499,14 +711,15 @@ export default function SocialMonitorPage() {
         >
           <div className="feedResultsHeader">
             <span>
-              {filtered.length} posts
+              {filtered.length} items
             </span>
 
             <span>
-              {arabicCount} Arabic
+              {blueskyCount} Bluesky
               {" · "}
-              Reddit{" "}
-              {redditStatus}
+              {substackCount} Substack
+              {" · "}
+              {arabicCount} Arabic
             </span>
           </div>
 
@@ -524,11 +737,29 @@ export default function SocialMonitorPage() {
               </span>
 
               <span>
-                {updatedAt
-                  ? `Updated ${formatUpdateTime(
-                      updatedAt
-                    )}`
-                  : ""}
+                Reddit{" "}
+                {redditStatus}
+              </span>
+            </div>
+          )}
+
+          {updatedAt && (
+            <div
+              className="feedResultsHeader"
+              style={{
+                textTransform:
+                  "none",
+              }}
+            >
+              <span>
+                Social sources active
+              </span>
+
+              <span>
+                Updated{" "}
+                {formatUpdateTime(
+                  updatedAt
+                )}
               </span>
             </div>
           )}
@@ -553,7 +784,7 @@ export default function SocialMonitorPage() {
               0 && (
               <div className="liveFeedEmpty">
                 No matching social
-                posts.
+                items.
               </div>
             )}
 
@@ -593,8 +824,10 @@ export default function SocialMonitorPage() {
                       }}
                     >
                       {item.account}
-                      {" "}
-                      {item.handle}
+
+                      {item.handle
+                        ? ` · ${item.handle}`
+                        : ""}
                     </div>
 
                     <a
@@ -613,9 +846,7 @@ export default function SocialMonitorPage() {
                       }}
                     >
                       <a
-                        href={
-                          item.url
-                        }
+                        href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="backLink"
@@ -624,8 +855,11 @@ export default function SocialMonitorPage() {
                             0,
                         }}
                       >
-                        Open original
-                        post
+                        {item.platform ===
+                        "Substack"
+                          ? "Read analysis"
+                          : "Open original post"}
+
                         <ExternalLink
                           size={13}
                         />
